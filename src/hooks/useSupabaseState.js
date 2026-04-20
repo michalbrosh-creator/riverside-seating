@@ -36,7 +36,13 @@ export function useSupabaseState(key, initialValue) {
         }
         setReady(true);
       })
-      .catch(() => setReady(true));
+      .catch(() => {
+        // Supabase unreachable — fall back to localStorage data
+        const seed = initLocalVal.current;
+        const hasSeed = Array.isArray(seed) ? seed.length > 0 : seed !== initialValue;
+        if (hasSeed) setRemoteVal(seed);
+        setReady(true);
+      });
 
     // Real-time: receive changes from other admins
     const channel = supabase
@@ -57,13 +63,15 @@ export function useSupabaseState(key, initialValue) {
   const setRemote = useCallback((newValue) => {
     setRemoteVal((prev) => {
       const resolved = typeof newValue === "function" ? newValue(prev) : newValue;
+      // Always write to localStorage as backup so data survives Supabase outages
+      setLocalVal(resolved);
       supabase
         .from("app_state")
         .upsert({ key, value: resolved, updated_at: new Date().toISOString() }, { onConflict: "key" })
         .then();
       return resolved;
     });
-  }, [key]);
+  }, [key, setLocalVal]);
 
   if (!SUPABASE_ENABLED) return [localVal, setLocalVal, true];
   return [remoteVal, setRemote, ready];

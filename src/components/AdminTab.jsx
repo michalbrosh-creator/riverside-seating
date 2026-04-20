@@ -29,11 +29,14 @@ function EmployeeTable({ employees, onRemove, onToggleAdmin }) {
   return (
     <div className="emp-table-wrapper">
       <div className="emp-table-toolbar">
-        <input className="emp-search" type="text" placeholder="Search employees..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        <div className="search-field">
+          <span className="search-icon">⌕</span>
+          <input className="emp-search" type="text" placeholder="Search employees…" value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
         <span className="emp-count">{employees.length} employee{employees.length !== 1 ? "s" : ""}</span>
       </div>
       {filtered.length === 0 ? (
-        <p className="empty-hint padded">{employees.length === 0 ? "No employees yet. Add one above or import a CSV." : "No results."}</p>
+        <div className="empty-hint padded">{employees.length === 0 ? "No employees yet. Add one above or import a CSV." : "No results."}</div>
       ) : (
         <table className="emp-table">
           <thead>
@@ -69,7 +72,7 @@ export default function AdminTab({
   onSelectFloor, onAddFloor, onRenameFloor, onRemoveFloor,
   onAddDesk, onRemoveDesk,
   onAddEmployee, onRemoveEmployee, onToggleAdmin, onImportEmployees,
-  onAssignSeat, onUnassignSeat, canAssign,
+  floorImages, onSetFloorImage, onClearFloorImage,
 }) {
   const [selectedSize, setSelectedSize] = useState(4);
   const [empName, setEmpName] = useState("");
@@ -80,13 +83,26 @@ export default function AdminTab({
   const [importError, setImportError] = useState("");
   const [importSuccess, setImportSuccess] = useState("");
   const fileInputRef = useRef();
+  const imageInputRef = useRef();
+  const [uploadingFloorId, setUploadingFloorId] = useState(null);
+
+  const startImageUpload = (floorId) => {
+    setUploadingFloorId(floorId);
+    imageInputRef.current.click();
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file || !uploadingFloorId) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => onSetFloorImage(uploadingFloorId, ev.target.result);
+    reader.readAsDataURL(file);
+    e.target.value = "";
+    setUploadingFloorId(null);
+  };
 
   const activeFloor = floors.find((f) => f.id === activeFloorId);
   const allDesks = activeFloor?.desks || [];
-  const assignedAnywhere = new Set(
-    floors.flatMap((f) => (f.desks || []).flatMap((d) => d.seats.filter((s) => s.employeeId).map((s) => s.employeeId)))
-  );
-  const empById = Object.fromEntries(employees.map((e) => [e.id, e]));
 
   const handleAddEmployee = () => {
     if (!empName.trim()) return;
@@ -105,11 +121,11 @@ export default function AdminTab({
     reader.onload = (ev) => {
       try {
         const parsed = parseCSV(ev.target.result);
-        if (!parsed.length) { setImportError("No valid rows found. Make sure the CSV has a Name column."); return; }
+        if (!parsed.length) { setImportError("No valid rows found in CSV. Make sure there is a Name column."); return; }
         onImportEmployees(parsed);
-        setImportSuccess(`Imported ${parsed.length} employee${parsed.length !== 1 ? "s" : ""}.`);
-        setTimeout(() => setImportSuccess(""), 3000);
-      } catch { setImportError("Failed to parse CSV."); }
+        setImportSuccess(`Imported ${parsed.length} employee${parsed.length !== 1 ? "s" : ""} successfully.`);
+        setTimeout(() => setImportSuccess(""), 4000);
+      } catch { setImportError("Failed to parse CSV file."); }
     };
     reader.readAsText(file);
     e.target.value = "";
@@ -121,7 +137,10 @@ export default function AdminTab({
       {/* ── Floors ── */}
       <section className="admin-section">
         <div className="section-header">
-          <h2>Floors</h2>
+          <div className="section-header-left">
+            <h2>Floors</h2>
+            <span className="section-meta">{floors.length} floor{floors.length !== 1 ? "s" : ""}</span>
+          </div>
           <button className="btn-primary" onClick={onAddFloor}>+ Add Floor</button>
         </div>
         <div className="floor-tabs-admin">
@@ -135,75 +154,60 @@ export default function AdminTab({
                 <span className="floor-tab-name" onClick={() => onSelectFloor(floor.id)}>{floor.name}</span>
               )}
               <button className="icon-btn" title="Rename" onClick={() => startFloorRename(floor)}>✎</button>
+              <button
+                className={`icon-btn ${floorImages?.[floor.id] ? "has-image" : ""}`}
+                title={floorImages?.[floor.id] ? "Change layout image" : "Upload layout image"}
+                onClick={() => startImageUpload(floor.id)}
+              >⊕</button>
+              {floorImages?.[floor.id] && (
+                <button className="icon-btn danger" title="Remove layout image" onClick={() => onClearFloorImage(floor.id)}>✕ img</button>
+              )}
               {floors.length > 1 && (
-                <button className="icon-btn danger" title="Remove" onClick={() => onRemoveFloor(floor.id)}>✕</button>
+                <button className="icon-btn danger" title="Remove floor" onClick={() => onRemoveFloor(floor.id)}>✕</button>
               )}
             </div>
           ))}
         </div>
+        <input ref={imageInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleImageUpload} />
       </section>
 
       {/* ── Desks ── */}
       <section className="admin-section">
         <div className="section-header">
-          <h2>Desks — {activeFloor?.name}</h2>
-          <div className="create-desk">
-            <div className="size-options">
-              {deskSizes.map((s) => (
-                <button key={s} className={`size-btn ${selectedSize === s ? "active" : ""}`} onClick={() => setSelectedSize(s)}>{s}</button>
-              ))}
-            </div>
-            <button className="btn-primary sm" onClick={() => onAddDesk(activeFloorId, selectedSize)}>
-              + Add Desk
-            </button>
+          <div className="section-header-left">
+            <h2>Desks</h2>
+            <span className="section-meta">{activeFloor?.name} · {allDesks.length} desk{allDesks.length !== 1 ? "s" : ""}</span>
           </div>
+        </div>
+        <div className="desk-toolbar">
+          <span className="toolbar-label">Seats per desk</span>
+          <div className="size-options">
+            {deskSizes.map((s) => (
+              <button key={s} className={`size-btn ${selectedSize === s ? "active" : ""}`} onClick={() => setSelectedSize(s)}>{s}</button>
+            ))}
+          </div>
+          <button className="btn-primary sm" onClick={() => onAddDesk(activeFloorId, selectedSize)}>+ Add Desk</button>
         </div>
 
         {allDesks.length === 0 ? (
-          <p className="empty-hint padded">No desks on this floor yet.</p>
+          <div className="empty-hint padded">No desks on this floor yet. Use the toolbar above to add one.</div>
         ) : (
           <div className="desk-list">
             {allDesks.map((desk) => {
               const occupied = desk.seats.filter((s) => s.employeeId).length;
+              const pct = Math.round((occupied / desk.size) * 100);
               return (
                 <div key={desk.label} className="desk-card">
                   <div className="desk-card-header">
                     <span className="desk-badge">{desk.label}</span>
-                    <span className="desk-info">Desk {desk.label} — {occupied}/{desk.size} occupied</span>
-                    <button className="btn-danger" onClick={() => onRemoveDesk(activeFloorId, desk.label)}>Remove</button>
-                  </div>
-                  <div className="desk-seat-assignments">
-                    {desk.seats.map((seat) => {
-                      const assigned = seat.employeeId ? empById[seat.employeeId] : null;
-                      return (
-                        <div key={seat.id} className="seat-assignment-row">
-                          <span className="seat-label-tag">{seat.id}</span>
-                          {canAssign ? (
-                            <select
-                              className="seat-emp-select"
-                              value={seat.employeeId ?? ""}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                if (!val) onUnassignSeat(seat.id);
-                                else onAssignSeat(Number(val), seat.id, activeFloorId);
-                              }}
-                            >
-                              <option value="">— Empty —</option>
-                              {employees.map((emp) => {
-                                const takenElsewhere = assignedAnywhere.has(emp.id) && emp.id !== seat.employeeId;
-                                return (
-                                  <option key={emp.id} value={emp.id} disabled={takenElsewhere}>
-                                    {emp.name}{emp.department ? ` (${emp.department})` : ""}{takenElsewhere ? " — seated" : ""}
-                                  </option>
-                                );
-                              })}
-                            </select>
-                          ) : (
-                            <span className="seat-emp-readonly">{assigned ? assigned.name : <span className="no-value">Empty</span>}</span>
-                          )}
-                        </div>
-                      );
-                    })}
+                    <div className="desk-card-info">
+                      <span className="desk-card-title">Desk {desk.label}</span>
+                      <div className="desk-occupancy-bar">
+                        <div className="desk-occupancy-fill" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                    <span className="desk-card-count">{occupied}/{desk.size} seats</span>
+                    <button className="btn-danger sm" onClick={() => onRemoveDesk(activeFloorId, desk.label)}>Remove</button>
                   </div>
                 </div>
               );
@@ -215,28 +219,31 @@ export default function AdminTab({
       {/* ── Employees ── */}
       <section className="admin-section">
         <div className="section-header">
-          <h2>Employees</h2>
-          <div className="emp-actions">
-            <div className="add-employee-form">
-              <input className="emp-input" type="text" placeholder="Name" value={empName}
-                onChange={(e) => setEmpName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddEmployee()} />
-              <input className="emp-input" type="text" placeholder="Department" value={empDept}
-                onChange={(e) => setEmpDept(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddEmployee()} />
-              <input className="emp-input" type="email" placeholder="Email (for SSO)" value={empEmail}
-                onChange={(e) => setEmpEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddEmployee()} />
-              <button className="btn-primary" onClick={handleAddEmployee}>+ Add</button>
-            </div>
-            <div className="import-area">
-              <button className="btn-secondary" onClick={() => fileInputRef.current.click()}>Import CSV</button>
-              <input ref={fileInputRef} type="file" accept=".csv,.txt" style={{ display: "none" }} onChange={handleFileImport} />
-              <span className="import-hint">Name, Department, Email columns</span>
-            </div>
+          <div className="section-header-left">
+            <h2>Employees</h2>
+            <span className="section-meta">{employees.length} total</span>
+          </div>
+          <div className="header-actions">
+            <button className="btn-secondary" onClick={() => fileInputRef.current.click()}>↑ Import CSV</button>
+            <input ref={fileInputRef} type="file" accept=".csv,.txt" style={{ display: "none" }} onChange={handleFileImport} />
           </div>
         </div>
+
+        <div className="emp-add-panel">
+          <input className="emp-input" type="text" placeholder="Full name" value={empName}
+            onChange={(e) => setEmpName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddEmployee()} />
+          <input className="emp-input" type="text" placeholder="Department" value={empDept}
+            onChange={(e) => setEmpDept(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddEmployee()} />
+          <input className="emp-input" type="email" placeholder="Email (for SSO login)" value={empEmail}
+            onChange={(e) => setEmpEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddEmployee()} />
+          <button className="btn-primary" onClick={handleAddEmployee} disabled={!empName.trim()}>Add Employee</button>
+        </div>
+
         {importError && <div className="import-msg error">{importError}</div>}
         {importSuccess && <div className="import-msg success">{importSuccess}</div>}
         <EmployeeTable employees={employees} onRemove={onRemoveEmployee} onToggleAdmin={onToggleAdmin} />
       </section>
+
     </div>
   );
 }

@@ -53,15 +53,20 @@ function EmployeePicker({ employees, assignedIds, position, onAssign, onUnassign
   );
 }
 
-function SeatCell({ seat, employee, canAssign, onSeatClick }) {
+function SeatCell({ seat, employee, canAssign, onSeatClick, onUnassign, onToggleSeatDisabled }) {
+  const isDisabled = !!seat.disabled;
+  const clickable = canAssign && !employee && !isDisabled;
+
   return (
     <div
-      className={`floor-seat ${employee ? "occupied" : "available"} ${canAssign && !employee ? "clickable-seat" : ""}`}
-      onClick={(e) => canAssign && onSeatClick(seat, e)}
-      title={!canAssign && !employee ? "" : canAssign ? "Click to assign" : undefined}
+      className={`floor-seat ${isDisabled ? "disabled" : employee ? "occupied" : "available"} ${clickable ? "clickable-seat" : ""}`}
+      onClick={(e) => clickable && onSeatClick(seat, e)}
+      title={isDisabled ? "Seat disabled" : clickable ? "Click to assign" : undefined}
     >
       <span className="floor-seat-id">{seat.id}</span>
-      {employee ? (
+      {isDisabled ? (
+        <span className="floor-seat-disabled-label">N/A</span>
+      ) : employee ? (
         <div className="seat-employee" onClick={(e) => { if (canAssign) { e.stopPropagation(); onSeatClick(seat, e); } }}>
           <span className="floor-seat-name">{employee.name.split(" ")[0]}</span>
           {canAssign && <span className="seat-edit-hint">✎</span>}
@@ -69,13 +74,28 @@ function SeatCell({ seat, employee, canAssign, onSeatClick }) {
       ) : (
         <span className="floor-seat-empty">{canAssign ? "+" : ""}</span>
       )}
+      {canAssign && employee && (
+        <button
+          className="seat-unassign-btn"
+          title="Remove from seat"
+          onClick={(e) => { e.stopPropagation(); onUnassign(seat.id); }}
+        >✕</button>
+      )}
+      {canAssign && !employee && (
+        <button
+          className={`seat-toggle-btn ${isDisabled ? "seat-enable-btn" : "seat-disable-btn"}`}
+          title={isDisabled ? "Re-enable seat" : "Disable seat"}
+          onClick={(e) => { e.stopPropagation(); onToggleSeatDisabled(seat.id); }}
+        >{isDisabled ? "✓" : "−"}</button>
+      )}
     </div>
   );
 }
 
-function DeskBlock({ desk, empMap, floorId, canAssign, onSeatClick, isSelected, isHighlighted, onSelect, onDragStart, onRotateStart }) {
-  const cols = Math.min(desk.size, 4);
+function DeskBlock({ desk, empMap, floorId, canAssign, onSeatClick, onUnassign, onToggleSeatDisabled, isSelected, isHighlighted, onSelect, onDragStart, onRotateClick, onResizeDesk }) {
+  const cols = desk.size === 6 ? 3 : desk.size === 4 ? 2 : Math.min(desk.size, 4);
   const occupied = desk.seats.filter((s) => s.employeeId).length;
+  const displayRotation = Math.round(((desk.rotation % 360) + 360) % 360);
 
   return (
     <div
@@ -84,11 +104,11 @@ function DeskBlock({ desk, empMap, floorId, canAssign, onSeatClick, isSelected, 
       onClick={(e) => { e.stopPropagation(); onSelect(desk.label); }}
     >
       {isSelected && (
-        <div
+        <button
           className="rotation-handle"
-          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onRotateStart(e, desk); }}
-          title="Drag to rotate"
-        >↻</div>
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRotateClick(desk); }}
+          title="Click to rotate 90°"
+        >↻</button>
       )}
       <div
         className="desk-block"
@@ -99,9 +119,21 @@ function DeskBlock({ desk, empMap, floorId, canAssign, onSeatClick, isSelected, 
           <span className="desk-block-title">Desk {desk.label}</span>
           <span className="desk-occupancy">{occupied}/{desk.size}</span>
           {isSelected && (
-            <span className="desk-rotation-label">{Math.round(((desk.rotation % 360) + 360) % 360)}°</span>
+            <span className="desk-rotation-label">{displayRotation}°</span>
           )}
         </div>
+        {isSelected && (
+          <div className="desk-resize-bar">
+            <span className="desk-resize-label">Seats:</span>
+            {RESIZE_OPTIONS.filter((s) => s !== desk.size).map((s) => (
+              <button
+                key={s}
+                className="desk-resize-btn"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onResizeDesk(desk, s); }}
+              >{s}</button>
+            ))}
+          </div>
+        )}
         <div className={`desk-seats cols-${cols}`}>
           {desk.seats.map((seat) => (
             <SeatCell
@@ -110,6 +142,8 @@ function DeskBlock({ desk, empMap, floorId, canAssign, onSeatClick, isSelected, 
               employee={seat.employeeId ? empMap[seat.employeeId] : null}
               canAssign={canAssign}
               onSeatClick={(s, e) => onSeatClick(s, floorId, e)}
+              onUnassign={onUnassign}
+              onToggleSeatDisabled={onToggleSeatDisabled}
             />
           ))}
         </div>
@@ -210,14 +244,16 @@ function EmployeeSearch({ employees, floors, onNavigate }) {
   );
 }
 
+const RESIZE_OPTIONS = [4, 6, 8];
+
 export default function FloorView({
   floors, activeFloorId, employees, assignedIds, canAssign,
-  onSelectFloor, onAssign, onUnassign, onMoveDesk, onRotateDesk,
+  onSelectFloor, onAssign, onUnassign, onToggleSeatDisabled, onMoveDesk, onRotateDesk, onResizeDesk,
+  floorImages,
 }) {
   const [selectedDesk, setSelectedDesk] = useState(null);
   const [highlightedDesk, setHighlightedDesk] = useState(null);
   const [deskDrag, setDeskDrag] = useState(null);
-  const [deskRotate, setDeskRotate] = useState(null);
   const [picker, setPicker] = useState(null);
   const deskRefs = useRef({});
   const canvasScrollRef = useRef(null);
@@ -248,32 +284,22 @@ export default function FloorView({
     setDeskDrag({ label: desk.label, startX: e.clientX, startY: e.clientY, origX: desk.x, origY: desk.y });
   }, []);
 
-  const handleRotateStart = useCallback((e, desk) => {
-    const el = deskRefs.current[desk.label];
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    const startAngle = Math.atan2(e.clientY - cy, e.clientX - cx) * (180 / Math.PI);
-    setDeskRotate({ label: desk.label, cx, cy, startAngle, origRotation: desk.rotation });
-  }, []);
+  const handleRotateClick = useCallback((desk) => {
+    onRotateDesk(activeFloorId, desk.label, (desk.rotation + 90) % 360);
+  }, [activeFloorId, onRotateDesk]);
+
+  const handleResizeDesk = useCallback((desk, newSize) => {
+    onResizeDesk(activeFloorId, desk.label, newSize);
+  }, [activeFloorId, onResizeDesk]);
 
   const handleMouseMove = useCallback((e) => {
     if (deskDrag) {
       onMoveDesk(activeFloorId, deskDrag.label, deskDrag.origX + (e.clientX - deskDrag.startX), deskDrag.origY + (e.clientY - deskDrag.startY));
     }
-    if (deskRotate) {
-      const angle = Math.atan2(e.clientY - deskRotate.cy, e.clientX - deskRotate.cx) * (180 / Math.PI);
-      let rotation = deskRotate.origRotation + (angle - deskRotate.startAngle);
-      const snapped = Math.round(rotation / 15) * 15;
-      if (Math.abs(rotation - snapped) < 4) rotation = snapped;
-      onRotateDesk(activeFloorId, deskRotate.label, rotation);
-    }
-  }, [deskDrag, deskRotate, activeFloorId, onMoveDesk, onRotateDesk]);
+  }, [deskDrag, activeFloorId, onMoveDesk]);
 
   const handleMouseUp = useCallback(() => {
     setDeskDrag(null);
-    setDeskRotate(null);
   }, []);
 
   const handleSeatClick = useCallback((seat, floorId, e) => {
@@ -284,7 +310,7 @@ export default function FloorView({
     setPicker({ seatId: seat.id, floorId, currentEmpId: seat.employeeId, x, y });
   }, []);
 
-  const isMoving = !!deskDrag || !!deskRotate;
+  const isMoving = !!deskDrag;
 
   return (
     <div className="floor-content-full">
@@ -308,12 +334,20 @@ export default function FloorView({
 
       <div
         ref={canvasScrollRef}
-        className={`canvas-scroll ${isMoving ? (deskRotate ? "cursor-crosshair" : "cursor-grabbing") : ""}`}
+        className={`canvas-scroll ${isMoving ? "cursor-grabbing" : ""}`}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
         <div className="floor-canvas" onClick={() => setSelectedDesk(null)}>
+          {floorImages?.[activeFloor?.id] && (
+            <img
+              src={floorImages[activeFloor.id]}
+              className="floor-bg-image"
+              alt="Office layout"
+              draggable={false}
+            />
+          )}
           {activeDesks.length === 0 ? (
             <div className="canvas-empty">No desks on this floor.<br />Add them in <strong>Admin</strong>.</div>
           ) : (
@@ -329,11 +363,14 @@ export default function FloorView({
                   floorId={activeFloor.id}
                   canAssign={canAssign}
                   onSeatClick={handleSeatClick}
+                  onUnassign={onUnassign}
+                  onToggleSeatDisabled={onToggleSeatDisabled}
                   isSelected={selectedDesk === desk.label}
                   isHighlighted={highlightedDesk === desk.label}
                   onSelect={setSelectedDesk}
                   onDragStart={handleDeskDragStart}
-                  onRotateStart={handleRotateStart}
+                  onRotateClick={handleRotateClick}
+                  onResizeDesk={handleResizeDesk}
                 />
               </div>
             ))

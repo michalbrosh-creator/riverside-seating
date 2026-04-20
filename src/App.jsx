@@ -1,8 +1,10 @@
+import { useEffect, useState } from "react";
 import { Routes, Route } from "react-router-dom";
 import { LoginCallback, useOktaAuth } from "@okta/okta-react";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { useSupabaseState } from "./hooks/useSupabaseState";
 import { DESK_LABELS, DESK_SIZES, createDesk, createFloor } from "./data";
+import { getAllFloorImages, saveFloorImage, removeFloorImage } from "./lib/floorImageStore";
 import { PERMANENT_ADMINS } from "./auth/oktaConfig";
 import FloorView from "./components/FloorView";
 import AdminTab from "./components/AdminTab";
@@ -27,8 +29,36 @@ function SeatingApp() {
   // Per-user prefs stay in localStorage
   const [activeTab, setActiveTab] = useLocalStorage("seats_activeTab", "floor");
   const [activeFloorId, setActiveFloorId] = useLocalStorage("seats_activeFloorId", 1);
+  const [floorImages, setFloorImages] = useState({});
+  useEffect(() => {
+    // Migrate any image previously saved in localStorage to IndexedDB, then free the space
+    try {
+      const old = localStorage.getItem("seats_floorImages");
+      if (old) {
+        const parsed = JSON.parse(old);
+        Object.entries(parsed).forEach(([id, url]) => saveFloorImage(id, url));
+        localStorage.removeItem("seats_floorImages");
+      }
+    } catch {}
+    getAllFloorImages().then(setFloorImages);
+  }, []);
+
+  const setFloorImage = (floorId, dataUrl) => {
+    saveFloorImage(floorId, dataUrl);
+    setFloorImages((prev) => ({ ...prev, [String(floorId)]: dataUrl }));
+  };
+  const clearFloorImage = (floorId) => {
+    removeFloorImage(floorId);
+    setFloorImages((prev) => { const n = { ...prev }; delete n[String(floorId)]; return n; });
+  };
 
   const ready = floorsReady && employeesReady;
+
+  // Keep activeFloorId valid if floors changed (e.g. after Supabase load)
+  useEffect(() => {
+    if (!ready || floors.length === 0) return;
+    if (!floors.find((f) => f.id === activeFloorId)) setActiveFloorId(floors[0].id);
+  }, [floors, ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const empByEmail = employees.find((e) => e.email?.toLowerCase() === userEmail.toLowerCase());
   const canAssign = localAuth || PERMANENT_ADMINS.includes(userEmail.toLowerCase()) || empByEmail?.isAdmin === true;
@@ -78,6 +108,20 @@ function SeatingApp() {
 
   const rotateDesk = (floorId, label, rotation) =>
     updateFloor(floorId, (f) => mapDesks(f, (d) => (d.label === label ? { ...d, rotation } : d)));
+
+  const resizeDesk = (floorId, label, newSize) =>
+    updateFloor(floorId, (f) => mapDesks(f, (d) => {
+      if (d.label !== label) return d;
+      const occupied = d.seats.filter((s) => s.employeeId);
+      const empty = d.seats.filter((s) => !s.employeeId);
+      const kept = [...occupied, ...empty].slice(0, newSize);
+      const newSeats = Array.from({ length: newSize }, (_, i) =>
+        kept[i]
+          ? { ...kept[i], id: `${label}${i + 1}`, label: `${i + 1}` }
+          : { id: `${label}${i + 1}`, label: `${i + 1}`, employeeId: null }
+      );
+      return { ...d, size: newSize, seats: newSeats };
+    }));
 
   // ── Employee ops ──
   const addEmployee = (name, department, email) => {
@@ -129,10 +173,23 @@ function SeatingApp() {
     );
   };
 
+  const toggleSeatDisabled = (seatId) => {
+    setFloors((prev) =>
+      prev.map((f) =>
+        mapDesks(f, (d) =>
+          mapSeats(d, (seat) =>
+            seat.id === seatId ? { ...seat, disabled: !seat.disabled, employeeId: null } : seat
+          )
+        )
+      )
+    );
+  };
+
   // ── Derived ──
   const allSeats = floors.flatMap((f) => (f.desks || []).flatMap((d) => d.seats));
   const assignedIds = new Set(allSeats.map((s) => s.employeeId).filter(Boolean));
-  const totalSeats = allSeats.length;
+  const activeSeats = allSeats.filter((s) => !s.disabled);
+  const totalSeats = activeSeats.length;
   const totalDesks = floors.reduce((a, f) => a + (f.desks || []).length, 0);
 
   if (!isAuthed) {
@@ -191,8 +248,11 @@ function SeatingApp() {
             onSelectFloor={setActiveFloorId}
             onAssign={assignEmployee}
             onUnassign={unassignSeat}
+            onToggleSeatDisabled={toggleSeatDisabled}
             onMoveDesk={moveDesk}
             onRotateDesk={rotateDesk}
+            onResizeDesk={resizeDesk}
+            floorImages={floorImages}
           />
         ) : (
           <AdminTab
@@ -206,13 +266,13 @@ function SeatingApp() {
             onRemoveFloor={removeFloor}
             onAddDesk={addDesk}
             onRemoveDesk={removeDesk}
+            floorImages={floorImages}
+            onSetFloorImage={setFloorImage}
+            onClearFloorImage={clearFloorImage}
             onAddEmployee={addEmployee}
             onRemoveEmployee={removeEmployee}
             onToggleAdmin={toggleAdmin}
             onImportEmployees={importEmployees}
-            onAssignSeat={assignEmployee}
-            onUnassignSeat={unassignSeat}
-            canAssign={canAssign}
           />
         )}
       </div>
