@@ -109,6 +109,10 @@ function SeatingApp() {
   const rotateDesk = (floorId, label, rotation) =>
     updateFloor(floorId, (f) => mapDesks(f, (d) => (d.label === label ? { ...d, rotation } : d)));
 
+  const renameDesk = (floorId, label, name) =>
+    updateFloor(floorId, (f) => mapDesks(f, (d) => (d.label === label ? { ...d, name } : d)));
+
+
   const resizeDesk = (floorId, label, newSize) =>
     updateFloor(floorId, (f) => mapDesks(f, (d) => {
       if (d.label !== label) return d;
@@ -252,6 +256,7 @@ function SeatingApp() {
             onMoveDesk={moveDesk}
             onRotateDesk={rotateDesk}
             onResizeDesk={resizeDesk}
+            onRenameDesk={renameDesk}
             floorImages={floorImages}
           />
         ) : (

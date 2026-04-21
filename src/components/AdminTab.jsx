@@ -199,9 +199,8 @@ export default function AdminTab({
               return (
                 <div key={desk.label} className="desk-card">
                   <div className="desk-card-header">
-                    <span className="desk-badge">{desk.label}</span>
                     <div className="desk-card-info">
-                      <span className="desk-card-title">Desk {desk.label}</span>
+                      <span className="desk-card-title">{desk.name || desk.label}</span>
                       <div className="desk-occupancy-bar">
                         <div className="desk-occupancy-fill" style={{ width: `${pct}%` }} />
                       </div>

@@ -272,26 +272,24 @@ body {
 .rotation-handle:active { transform: translateX(-50%) scale(0.95); }
 
 .desk-block {
-  background: white; border-radius: 10px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.06);
-  overflow: hidden; min-width: 160px; cursor: grab;
+  background: white; border-radius: 7px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 3px 8px rgba(0,0,0,0.05);
+  overflow: hidden; min-width: 130px; cursor: grab;
   border: 1px solid #e2e8f0;
 }
 .desk-block:active { cursor: grabbing; }
 
 .desk-block-header {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 11px; background: #1a1a2e; color: white;
+  display: flex; align-items: center; gap: 5px;
+  padding: 3px 8px; background: #1a1a2e; color: white;
 }
-.desk-badge {
-  width: 24px; height: 24px; border-radius: 6px;
-  background: rgba(255,255,255,0.12);
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 700; font-size: 0.75rem; flex-shrink: 0;
-  letter-spacing: -0.01em;
+.desk-block-title { flex: 1; font-size: 0.6875rem; font-weight: 600; cursor: text; letter-spacing: 0.01em; }
+.desk-name-input {
+  flex: 1; font-size: 0.6875rem; font-weight: 600; color: white;
+  background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 3px; padding: 1px 4px; outline: none; min-width: 0;
 }
-.desk-block-title { flex: 1; font-size: 0.8125rem; font-weight: 600; }
-.desk-occupancy { font-size: 0.6875rem; opacity: 0.55; flex-shrink: 0; }
+.desk-occupancy { font-size: 0.6rem; opacity: 0.5; flex-shrink: 0; }
 .desk-rotation-label {
   font-size: 0.625rem; opacity: 0.6;
   background: rgba(255,255,255,0.1);
@@ -318,8 +316,8 @@ body {
 .floor-seat {
   position: relative;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: 8px 6px; gap: 3px; background: white;
-  min-width: 72px; min-height: 62px; transition: background 0.12s; cursor: default;
+  padding: 5px 4px; gap: 2px; background: white;
+  min-width: 58px; min-height: 61px; transition: background 0.12s; cursor: default;
 }
 .floor-seat.available { background: #fafffe; }
 .floor-seat.occupied  { background: #fafafe; }
@@ -370,8 +368,13 @@ body {
   display: flex; flex-direction: column; max-height: 340px;
 }
 .picker-header {
-  display: flex; align-items: center; gap: 6px;
+  display: flex; flex-direction: column; gap: 6px;
   padding: 10px 10px 8px; border-bottom: 1px solid #f1f5f9;
+}
+.picker-header > div { display: flex; align-items: center; gap: 6px; }
+.picker-seat-label {
+  font-size: 0.7rem; font-weight: 700; color: #6366f1;
+  letter-spacing: 0.02em; padding: 2px 0;
 }
 .picker-search {
   flex: 1; padding: 6px 10px;

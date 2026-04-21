@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 
-function EmployeePicker({ employees, assignedIds, position, onAssign, onUnassign, currentEmployeeId, onClose }) {
+function EmployeePicker({ employees, assignedIds, position, onAssign, onUnassign, currentEmployeeId, onClose, seatLabel }) {
   const [search, setSearch] = useState("");
   const filtered = employees.filter((e) =>
     e.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -12,14 +12,17 @@ function EmployeePicker({ employees, assignedIds, position, onAssign, onUnassign
       <div className="picker-backdrop" onClick={onClose} />
       <div className="emp-picker" style={{ top: position.y, left: position.x }}>
         <div className="picker-header">
-          <input
-            autoFocus
-            className="picker-search"
-            placeholder="Search employee..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <button className="picker-close" onClick={onClose}>✕</button>
+          {seatLabel && <span className="picker-seat-label">{seatLabel}</span>}
+          <div>
+            <input
+              autoFocus
+              className="picker-search"
+              placeholder="Search employee..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <button className="picker-close" onClick={onClose}>✕</button>
+          </div>
         </div>
         {currentEmployeeId && (
           <button className="picker-unassign" onClick={() => { onUnassign(); onClose(); }}>
@@ -63,7 +66,7 @@ function SeatCell({ seat, employee, canAssign, onSeatClick, onUnassign, onToggle
       onClick={(e) => clickable && onSeatClick(seat, e)}
       title={isDisabled ? "Seat disabled" : clickable ? "Click to assign" : undefined}
     >
-      <span className="floor-seat-id">{seat.id}</span>
+      <span className="floor-seat-id">{seat.label}</span>
       {isDisabled ? (
         <span className="floor-seat-disabled-label">N/A</span>
       ) : employee ? (
@@ -92,10 +95,20 @@ function SeatCell({ seat, employee, canAssign, onSeatClick, onUnassign, onToggle
   );
 }
 
-function DeskBlock({ desk, empMap, floorId, canAssign, onSeatClick, onUnassign, onToggleSeatDisabled, isSelected, isHighlighted, onSelect, onDragStart, onRotateClick, onResizeDesk }) {
+function DeskBlock({ desk, empMap, floorId, canAssign, onSeatClick, onUnassign, onToggleSeatDisabled, isSelected, isHighlighted, onSelect, onDragStart, onRotateClick, onResizeDesk, onRenameDesk }) {
   const cols = desk.size === 6 ? 3 : desk.size === 4 ? 2 : Math.min(desk.size, 4);
   const occupied = desk.seats.filter((s) => s.employeeId).length;
   const displayRotation = Math.round(((desk.rotation % 360) + 360) % 360);
+  const deskName = desk.name || desk.label;
+  const [editingName, setEditingName] = useState(false);
+  const [nameVal, setNameVal] = useState(deskName);
+
+  const commitName = () => {
+    const trimmed = nameVal.trim();
+    if (trimmed && trimmed !== deskName) onRenameDesk(desk, trimmed);
+    else setNameVal(deskName);
+    setEditingName(false);
+  };
 
   return (
     <div
@@ -115,8 +128,24 @@ function DeskBlock({ desk, empMap, floorId, canAssign, onSeatClick, onUnassign, 
         onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onDragStart(e, desk); }}
       >
         <div className="desk-block-header">
-          <span className="desk-badge">{desk.label}</span>
-          <span className="desk-block-title">Desk {desk.label}</span>
+          {editingName ? (
+            <input
+              className="desk-name-input"
+              value={nameVal}
+              autoFocus
+              onChange={(e) => setNameVal(e.target.value)}
+              onBlur={commitName}
+              onKeyDown={(e) => { if (e.key === "Enter") commitName(); if (e.key === "Escape") { setNameVal(deskName); setEditingName(false); } }}
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <span
+              className="desk-block-title"
+              title="Double-click to rename"
+              onDoubleClick={(e) => { e.stopPropagation(); setNameVal(deskName); setEditingName(true); }}
+            >{deskName}</span>
+          )}
           <span className="desk-occupancy">{occupied}/{desk.size}</span>
           {isSelected && (
             <span className="desk-rotation-label">{displayRotation}°</span>
@@ -157,7 +186,6 @@ function EmployeeSearch({ employees, floors, onNavigate }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
 
-  // Build map: employeeId → { floorId, floorName, deskLabel, seatId, deskX, deskY }
   const locationMap = {};
   floors.forEach((floor) => {
     (floor.desks || []).forEach((desk) => {
@@ -167,7 +195,8 @@ function EmployeeSearch({ employees, floors, onNavigate }) {
             floorId: floor.id,
             floorName: floor.name,
             deskLabel: desk.label,
-            seatId: seat.id,
+            deskName: desk.name || desk.label,
+            seatNumber: seat.label,
             deskX: desk.x,
             deskY: desk.y,
           };
@@ -226,7 +255,7 @@ function EmployeeSearch({ employees, floors, onNavigate }) {
                 </div>
                 {loc ? (
                   <span className="floor-search-location">
-                    <span className="location-seat">{loc.seatId}</span>
+                    <span className="location-seat">{loc.deskName} · {loc.seatNumber}</span>
                     {floors.length > 1 && <span className="location-floor">{loc.floorName}</span>}
                   </span>
                 ) : (
@@ -248,7 +277,7 @@ const RESIZE_OPTIONS = [4, 6, 8];
 
 export default function FloorView({
   floors, activeFloorId, employees, assignedIds, canAssign,
-  onSelectFloor, onAssign, onUnassign, onToggleSeatDisabled, onMoveDesk, onRotateDesk, onResizeDesk,
+  onSelectFloor, onAssign, onUnassign, onToggleSeatDisabled, onMoveDesk, onRotateDesk, onResizeDesk, onRenameDesk,
   floorImages,
 }) {
   const [selectedDesk, setSelectedDesk] = useState(null);
@@ -307,8 +336,11 @@ export default function FloorView({
     const rect = e.currentTarget.getBoundingClientRect();
     const x = Math.min(rect.right + 8, window.innerWidth - 260);
     const y = Math.min(rect.top, window.innerHeight - 340);
-    setPicker({ seatId: seat.id, floorId, currentEmpId: seat.employeeId, x, y });
-  }, []);
+    const floor = floors.find((f) => f.id === floorId);
+    const desk = (floor?.desks || []).find((d) => d.seats.some((s) => s.id === seat.id));
+    const seatLabel = `${desk ? (desk.name || desk.label) : ""} · ${seat.label}`;
+    setPicker({ seatId: seat.id, seatLabel, floorId, currentEmpId: seat.employeeId, x, y });
+  }, [floors]);
 
   const isMoving = !!deskDrag;
 
@@ -371,6 +403,7 @@ export default function FloorView({
                   onDragStart={handleDeskDragStart}
                   onRotateClick={handleRotateClick}
                   onResizeDesk={handleResizeDesk}
+                  onRenameDesk={(desk, name) => onRenameDesk(activeFloorId, desk.label, name)}
                 />
               </div>
             ))
@@ -384,6 +417,7 @@ export default function FloorView({
           assignedIds={assignedIds}
           position={{ x: picker.x, y: picker.y }}
           currentEmployeeId={picker.currentEmpId}
+          seatLabel={picker.seatLabel}
           onAssign={(empId) => onAssign(empId, picker.seatId, picker.floorId)}
           onUnassign={() => onUnassign(picker.seatId)}
           onClose={() => setPicker(null)}

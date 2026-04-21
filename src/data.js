@@ -8,6 +8,7 @@ export const DESK_LABELS = [
 export const createDesk = (label, size, x = 40, y = 40) => ({
   id: label,
   label,
+  name: label,
   size,
   x,
   y,
