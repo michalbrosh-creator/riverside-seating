@@ -125,6 +125,7 @@ function DeskBlock({ desk, empMap, floorId, canAssign, onSeatClick, onUnassign, 
       )}
       <div
         className="desk-block"
+        data-desk-label={desk.label}
         onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onDragStart(e, desk); }}
       >
         <div className="desk-block-header">
@@ -284,6 +285,7 @@ export default function FloorView({
   const [highlightedDesk, setHighlightedDesk] = useState(null);
   const [deskDrag, setDeskDrag] = useState(null);
   const [picker, setPicker] = useState(null);
+  const [seatPin, setSeatPin] = useState(null);
   const deskRefs = useRef({});
   const canvasScrollRef = useRef(null);
 
@@ -293,20 +295,31 @@ export default function FloorView({
 
   const handleNavigate = useCallback((emp, loc) => {
     if (!loc) return;
-    // Switch floor if needed
     if (loc.floorId !== activeFloorId) onSelectFloor(loc.floorId);
-    // Scroll to desk and highlight
-    setHighlightedDesk(loc.deskLabel);
+
+    // Wait for any floor switch to render before measuring
     setTimeout(() => {
-      if (canvasScrollRef.current) {
-        canvasScrollRef.current.scrollTo({
-          left: Math.max(0, loc.deskX - 200),
-          top: Math.max(0, loc.deskY - 150),
-          behavior: "smooth",
-        });
-      }
-    }, 50);
-    setTimeout(() => setHighlightedDesk(null), 2500);
+      const canvas = canvasScrollRef.current;
+      const deskEl = document.querySelector(`[data-desk-label="${loc.deskLabel}"]`);
+      if (!deskEl || !canvas) return;
+
+      const deskRect = deskEl.getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
+
+      // True canvas-space coordinates accounting for scroll
+      const pinX = deskRect.left - canvasRect.left + canvas.scrollLeft + deskRect.width / 2;
+      const pinY = deskRect.top - canvasRect.top + canvas.scrollTop + deskRect.height / 2;
+
+      setSeatPin({ x: pinX, y: pinY, key: Date.now() });
+
+      canvas.scrollTo({
+        left: Math.max(0, pinX - canvas.clientWidth / 2),
+        top: Math.max(0, pinY - canvas.clientHeight / 2),
+        behavior: "smooth",
+      });
+    }, 80);
+
+    setTimeout(() => setSeatPin(null), 3500);
   }, [activeFloorId, onSelectFloor]);
 
   const handleDeskDragStart = useCallback((e, desk) => {
@@ -371,7 +384,13 @@ export default function FloorView({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
-        <div className="floor-canvas" onClick={() => setSelectedDesk(null)}>
+        <div className="floor-canvas" onClick={() => { setSelectedDesk(null); setSeatPin(null); }}>
+          {seatPin && (
+            <div key={seatPin.key} className="seat-pin" style={{ left: seatPin.x, top: seatPin.y }}>
+              <div className="seat-pin-head" />
+              <div className="seat-pin-stem" />
+            </div>
+          )}
           {floorImages?.[activeFloor?.id] && (
             <img
               src={floorImages[activeFloor.id]}
