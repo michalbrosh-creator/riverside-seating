@@ -68,7 +68,7 @@ function EmployeeTable({ employees, onRemove, onToggleAdmin }) {
 }
 
 export default function AdminTab({
-  floors, activeFloorId, employees, deskSizes,
+  floors, activeFloorId, employees, deskSizes, stats,
   onSelectFloor, onAddFloor, onRenameFloor, onRemoveFloor,
   onAddDesk, onRemoveDesk,
   onAddEmployee, onRemoveEmployee, onToggleAdmin, onImportEmployees,
@@ -133,6 +133,14 @@ export default function AdminTab({
 
   return (
     <div className="admin-tab">
+
+      {stats && (
+        <div className="admin-stats">
+          <span className="stat occupied">{stats.occupied} Occupied</span>
+          <span className="stat available">{stats.available} Available</span>
+          <span className="stat total">{stats.desks} Desks</span>
+        </div>
+      )}
 
       {/* ── Floors ── */}
       <section className="admin-section">

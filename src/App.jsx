@@ -213,11 +213,6 @@ function SeatingApp() {
     <div className="app">
       <header className="app-header">
         <h1>Riverside Seating</h1>
-        <div className="stats">
-          <span className="stat occupied">{assignedIds.size} Occupied</span>
-          <span className="stat available">{totalSeats - assignedIds.size} Available</span>
-          <span className="stat total">{totalDesks} Desks</span>
-        </div>
         <div className="user-switcher">
           <span className="user-label">
             {userName}
@@ -269,6 +264,7 @@ function SeatingApp() {
             onAddFloor={addFloor}
             onRenameFloor={renameFloor}
             onRemoveFloor={removeFloor}
+            stats={{ occupied: assignedIds.size, available: totalSeats - assignedIds.size, desks: totalDesks }}
             onAddDesk={addDesk}
             onRemoveDesk={removeDesk}
             floorImages={floorImages}
