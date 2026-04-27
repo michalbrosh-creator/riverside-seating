@@ -20,6 +20,11 @@ jobs:
     uses: riversidefm/github-actions/.github/workflows/gitops-build.yml@main
     with:
       ecr-repository: riverside-seating
+      build-args: |
+        VITE_OKTA_ISSUER=${{ vars.VITE_OKTA_ISSUER }}
+        VITE_OKTA_CLIENT_ID=${{ vars.VITE_OKTA_CLIENT_ID }}
+        VITE_SUPABASE_URL=${{ vars.VITE_SUPABASE_URL }}
+        VITE_SUPABASE_ANON_KEY=${{ vars.VITE_SUPABASE_ANON_KEY }}
     secrets: inherit
 
   print-image-metadata:

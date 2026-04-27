@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Routes, Route } from "react-router-dom";
-import { LoginCallback, useOktaAuth } from "@okta/okta-react";
+// import { LoginCallback, useOktaAuth } from "@okta/okta-react";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { useSupabaseState } from "./hooks/useSupabaseState";
 import { DESK_LABELS, DESK_SIZES, createDesk, createFloor } from "./data";
@@ -15,14 +15,14 @@ const mapDesks = (floor, fn) => ({ ...floor, desks: floor.desks.map(fn) });
 const mapSeats = (desk, fn) => ({ ...desk, seats: desk.seats.map(fn) });
 
 function SeatingApp() {
-  const { authState, oktaAuth: auth } = useOktaAuth();
+  // const { authState, oktaAuth: auth } = useOktaAuth();
   const [localAuth, setLocalAuth] = useLocalStorage("seats_localAuth", false);
 
-  const isOktaAuthed = authState?.isAuthenticated;
-  const isAuthed = isOktaAuthed || localAuth;
+  const isOktaAuthed = false;
+  const isAuthed = localAuth;
 
-  const userEmail = authState?.idToken?.claims?.email || "";
-  const userName = authState?.idToken?.claims?.name || (localAuth ? "Local Admin" : "");
+  const userEmail = "";
+  const userName = localAuth ? "Local Admin" : "";
 
   const [floors, setFloors, floorsReady] = useSupabaseState("seats_floors", [createFloor(1, "Floor 1")]);
   const [employees, setEmployees, employeesReady] = useSupabaseState("seats_employees", []);
@@ -220,7 +220,7 @@ function SeatingApp() {
           </span>
           <button
             className="logout-btn"
-            onClick={() => { if (isOktaAuthed) auth.signOut(); else setLocalAuth(false); }}
+            onClick={() => setLocalAuth(false)}
           >
             Sign out
           </button>
@@ -284,7 +284,7 @@ function SeatingApp() {
 export default function App() {
   return (
     <Routes>
-      <Route path="/login/callback" element={<LoginCallback />} />
+      {/* <Route path="/login/callback" element={<LoginCallback />} /> */}
       <Route path="*" element={<SeatingApp />} />
     </Routes>
   );
