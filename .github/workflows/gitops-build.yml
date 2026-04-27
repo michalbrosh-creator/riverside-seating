@@ -1,0 +1,108 @@
+name: Build & Push to ECR
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: write
+  packages: read
+
+jobs:
+  check-package-versions:
+    runs-on: ubuntu-latest
+    name: Check @riversidefm Package Versions
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          NPM_TOKEN: ${{ secrets.AUTOMATION_GITHUB_TOKEN }}
+
+      - name: Check package versions
+        run: node scripts/check-package-versions.js
+        env:
+          NPM_TOKEN: ${{ secrets.AUTOMATION_GITHUB_TOKEN }}
+
+  schema-check:
+    runs-on: ubuntu-latest
+    name: Cosmo Federation Schema Check
+    env:
+      COSMO_API_KEY: ${{ secrets.COSMO_API_KEY }}
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Run schema check
+        run: |
+          npx -y wgc@latest subgraph check identifier --namespace stg --schema ./src/schema/schema.graphql
+
+  build:
+    needs: check-package-versions
+    uses: riversidefm/github-actions/.github/workflows/gitops-build.yml@main
+    with:
+      ecr-repository: identifier  # ECR repo name
+      use-npm-token: true
+    secrets:
+      AUTOMATION_GITHUB_TOKEN: ${{ secrets.AUTOMATION_GITHUB_TOKEN }}
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  print-image-metadata:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Show image digest and tag
+        run: |
+          echo "Image Digest: ${{ needs.build.outputs.image_digest }}"
+          echo "Image Tag: ${{ needs.build.outputs.image-tag }}"
+
+  deploy-grafana-dashboard:
+    runs-on: ubuntu-latest
+    name: Deploy Grafana Dashboard to Coralogix
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Replace template variables and prepare payload
+        run: |
+          SERVICE_NAME="identifier"
+          sed "s/identifier/$SERVICE_NAME/g; s/identifier/$SERVICE_NAME/g" \
+            monitoring/grafana-dashboard.json > dashboard-temp.json
+
+          # Wrap dashboard in required payload structure
+          jq -n --slurpfile dashboard dashboard-temp.json '{dashboard: $dashboard[0], overwrite: true}' > dashboard-payload.json
+
+      - name: Deploy to Coralogix Grafana
+        if: ${{ env.CORALOGIX_GRAFANA_KEY != '' }}
+        env:
+          CORALOGIX_GRAFANA_KEY: ${{ secrets.CORALOGIX_GRAFANA_KEY }}
+        run: |
+          if [ -z "$CORALOGIX_GRAFANA_KEY" ]; then
+            echo "⚠️  CORALOGIX_GRAFANA_KEY secret not configured - skipping dashboard deployment"
+            exit 0
+          fi
+
+          curl --location 'https://ng-api-http.us1.coralogix.com/grafana/api/dashboards/db' \
+            --header 'Content-Type: application/json' \
+            --header "Authorization: Bearer $CORALOGIX_GRAFANA_KEY" \
+            --data "@dashboard-payload.json" \
+            --fail-with-body
+
+          echo "✅ Grafana dashboard deployed successfully for identifier"

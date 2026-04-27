@@ -1,0 +1,36 @@
+name: PR Commit for identifier
+
+on:
+  pull_request:
+
+concurrency:
+  group: $-$
+  cancel-in-progress: true
+
+jobs:
+  pr-checks:
+    runs-on: ubuntu-latest
+    name: PR Checks
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm i
+        env:
+          NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate types
+        run: npm run db:generate && npm run gql:generate:types
+
+      - name: Run TypeScript type check
+        run: npx tsc --noEmit
+
+      - name: Run e2e tests
+        run: npm run test:e2e

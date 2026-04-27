@@ -1,0 +1,28 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      image-tag:
+        description: 'Image tag to deploy'
+        required: true
+        type: string
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options: [stg, prod]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event.inputs.environment }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    uses: riversidefm/github-actions/.github/workflows/gitops-deploy.yml@main
+    with:
+      environment: ${{ github.event.inputs.environment }}
+      ecr-repository: identifier
+      values-file: identifier
+      image-tag: ${{ github.event.inputs.image-tag }}
+    secrets: inherit
