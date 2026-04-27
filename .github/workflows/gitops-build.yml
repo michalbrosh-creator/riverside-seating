@@ -19,7 +19,7 @@ jobs:
   build:
     uses: riversidefm/github-actions/.github/workflows/gitops-build.yml@main
     with:
-      ecr-repository: seats-manager
+      ecr-repository: riverside-seating
     secrets: inherit
 
   print-image-metadata:
@@ -29,16 +29,16 @@ jobs:
       - name: Show image digest and tag
         run: |
           echo "Image Digest: ${{ needs.build.outputs.image_digest }}"
-          echo "Image Tag: ${{ needs.build.outputs.image_tag }}"
+          echo "Image Tag: ${{ needs.build.outputs.image-tag }}"
 
   deploy-stg:
     needs: build
     uses: riversidefm/github-actions/.github/workflows/deploy_image_generic.yml@main
     with:
-      image_tag: ${{ needs.build.outputs.image_tag }}
-      ecr_repository: seats-manager
+      image_tag: ${{ needs.build.outputs.image-tag }}
+      ecr_repository: riverside-seating
       env_name: stg
-      values_file: seats-manager
+      values_file: riverside-seating
     secrets:
       AUTOMATION_GITHUB_TOKEN: ${{ secrets.AUTOMATION_GITHUB_TOKEN }}
 
@@ -62,7 +62,7 @@ jobs:
       - name: Replace template variables and prepare payload
         if: steps.check-dashboard.outputs.exists == 'true'
         run: |
-          SERVICE_NAME="seats-manager"
+          SERVICE_NAME="riverside-seating"
           sed "s/identifier/$SERVICE_NAME/g" \
             monitoring/grafana-dashboard.json > dashboard-temp.json
           jq -n --slurpfile dashboard dashboard-temp.json '{dashboard: $dashboard[0], overwrite: true}' > dashboard-payload.json
@@ -77,5 +77,5 @@ jobs:
             --header "Authorization: Bearer $CORALOGIX_GRAFANA_KEY" \
             --data "@dashboard-payload.json" \
             --fail-with-body
-          echo "Grafana dashboard deployed successfully for seats-manager"
+          echo "Grafana dashboard deployed successfully for riverside-seating"
 
