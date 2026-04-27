@@ -1,10 +1,10 @@
-name: PR Commit for identifier
+name: PR Commit for seats-manager
 
 on:
   pull_request:
 
 concurrency:
-  group: $-$
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -22,15 +22,10 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm i
-        env:
-          NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Generate types
-        run: npm run db:generate && npm run gql:generate:types
+        run: npm ci
 
       - name: Run TypeScript type check
         run: npx tsc --noEmit
 
-      - name: Run e2e tests
-        run: npm run test:e2e
+      - name: Run lint
+        run: npm run lint

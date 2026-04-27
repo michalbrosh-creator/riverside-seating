@@ -16,53 +16,12 @@ permissions:
   packages: read
 
 jobs:
-  check-package-versions:
-    runs-on: ubuntu-latest
-    name: Check @riversidefm Package Versions
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-        env:
-          NPM_TOKEN: ${{ secrets.AUTOMATION_GITHUB_TOKEN }}
-
-      - name: Check package versions
-        run: node scripts/check-package-versions.js
-        env:
-          NPM_TOKEN: ${{ secrets.AUTOMATION_GITHUB_TOKEN }}
-
-  schema-check:
-    runs-on: ubuntu-latest
-    name: Cosmo Federation Schema Check
-    env:
-      COSMO_API_KEY: ${{ secrets.COSMO_API_KEY }}
-    defaults:
-      run:
-        working-directory: .
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Run schema check
-        run: |
-          npx -y wgc@latest subgraph check identifier --namespace stg --schema ./src/schema/schema.graphql
-
   build:
-    needs: check-package-versions
     uses: riversidefm/github-actions/.github/workflows/gitops-build.yml@main
     with:
-      ecr-repository: identifier  # ECR repo name
-      use-npm-token: true
+      ecr-repository: seats-manager
     secrets:
       AUTOMATION_GITHUB_TOKEN: ${{ secrets.AUTOMATION_GITHUB_TOKEN }}
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   print-image-metadata:
     needs: build
@@ -82,8 +41,8 @@ jobs:
 
       - name: Replace template variables and prepare payload
         run: |
-          SERVICE_NAME="identifier"
-          sed "s/identifier/$SERVICE_NAME/g; s/identifier/$SERVICE_NAME/g" \
+          SERVICE_NAME="seats-manager"
+          sed "s/identifier/$SERVICE_NAME/g" \
             monitoring/grafana-dashboard.json > dashboard-temp.json
 
           # Wrap dashboard in required payload structure
@@ -105,4 +64,4 @@ jobs:
             --data "@dashboard-payload.json" \
             --fail-with-body
 
-          echo "✅ Grafana dashboard deployed successfully for identifier"
+          echo "✅ Grafana dashboard deployed successfully for seats-manager"
