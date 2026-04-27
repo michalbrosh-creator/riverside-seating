@@ -15,6 +15,6 @@ jobs:
       node-version: '22.14.0'
       runs-on: '["self-hosted", "k8s", "medium"]'
       env: |
-        OTEL_SERVICE_NAME=seats-manager
+        OTEL_SERVICE_NAME=riverside-seating
     secrets:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

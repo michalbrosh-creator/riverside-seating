@@ -22,7 +22,7 @@ jobs:
     uses: riversidefm/github-actions/.github/workflows/gitops-deploy.yml@main
     with:
       environment: ${{ github.event.inputs.environment }}
-      ecr-repository: seats-manager
-      values-file: seats-manager
+      ecr-repository: riverside-seating
+      values-file: riverside-seating
       image-tag: ${{ github.event.inputs.image-tag }}
     secrets: inherit
