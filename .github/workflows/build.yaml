@@ -1,0 +1,46 @@
+name: Build and Deploy riverside-seating to STG
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: write
+  packages: read
+
+jobs:
+  build:
+    uses: riversidefm/github-actions/.github/workflows/build_image_generic.yml@main
+    with:
+      ecr_repository: riverside-seating
+      repository: ${{ github.repository }}
+    secrets:
+      AUTOMATION_GITHUB_TOKEN: ${{ secrets.AUTOMATION_GITHUB_TOKEN }}
+
+  print-image-metadata:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Show image digest and tag
+        run: |
+          echo "Image Digest: ${{ needs.build.outputs.image_digest }}"
+          echo "Image Tag: ${{ needs.build.outputs.image_tag }}"
+
+  deploy-stg:
+    needs: build
+    uses: riversidefm/github-actions/.github/workflows/deploy_image_generic.yml@main
+    with:
+      image_tag: ${{ needs.build.outputs.image_tag }}
+      ecr_repository: riverside-seating
+      env_name: stg
+      values_file: riverside-seating
+    secrets:
+      AUTOMATION_GITHUB_TOKEN: ${{ secrets.AUTOMATION_GITHUB_TOKEN }}
