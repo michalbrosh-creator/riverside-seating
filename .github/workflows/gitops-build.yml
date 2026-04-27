@@ -29,7 +29,18 @@ jobs:
       - name: Show image digest and tag
         run: |
           echo "Image Digest: ${{ needs.build.outputs.image_digest }}"
-          echo "Image Tag: ${{ needs.build.outputs.image-tag }}"
+          echo "Image Tag: ${{ needs.build.outputs.image_tag }}"
+
+  deploy-stg:
+    needs: build
+    uses: riversidefm/github-actions/.github/workflows/deploy_image_generic.yml@main
+    with:
+      image_tag: ${{ needs.build.outputs.image_tag }}
+      ecr_repository: seats-manager
+      env_name: stg
+      values_file: seats-manager
+    secrets:
+      AUTOMATION_GITHUB_TOKEN: ${{ secrets.AUTOMATION_GITHUB_TOKEN }}
 
   deploy-grafana-dashboard:
     runs-on: ubuntu-latest
