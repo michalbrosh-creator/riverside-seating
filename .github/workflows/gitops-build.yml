@@ -20,10 +20,7 @@ jobs:
     uses: riversidefm/github-actions/.github/workflows/gitops-build.yml@main
     with:
       ecr-repository: seats-manager
-    secrets:
-      AUTOMATION_GITHUB_TOKEN: ${{ secrets.AUTOMATION_GITHUB_TOKEN }}
-      WIZ_ACCESS_ID: ${{ secrets.WIZ_ACCESS_ID }}
-      WIZ_ACCESS_KEY: ${{ secrets.WIZ_ACCESS_KEY }}
+    secrets: inherit
 
   print-image-metadata:
     needs: build
