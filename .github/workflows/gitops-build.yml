@@ -31,3 +31,40 @@ jobs:
           echo "Image Digest: ${{ needs.build.outputs.image_digest }}"
           echo "Image Tag: ${{ needs.build.outputs.image-tag }}"
 
+  deploy-grafana-dashboard:
+    runs-on: ubuntu-latest
+    name: Deploy Grafana Dashboard to Coralogix
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check if dashboard file exists
+        id: check-dashboard
+        run: |
+          if [ -f monitoring/grafana-dashboard.json ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "No monitoring/grafana-dashboard.json found - skipping"
+          fi
+
+      - name: Replace template variables and prepare payload
+        if: steps.check-dashboard.outputs.exists == 'true'
+        run: |
+          SERVICE_NAME="seats-manager"
+          sed "s/identifier/$SERVICE_NAME/g" \
+            monitoring/grafana-dashboard.json > dashboard-temp.json
+          jq -n --slurpfile dashboard dashboard-temp.json '{dashboard: $dashboard[0], overwrite: true}' > dashboard-payload.json
+
+      - name: Deploy to Coralogix Grafana
+        if: steps.check-dashboard.outputs.exists == 'true' && env.CORALOGIX_GRAFANA_KEY != ''
+        env:
+          CORALOGIX_GRAFANA_KEY: ${{ secrets.CORALOGIX_GRAFANA_KEY }}
+        run: |
+          curl --location 'https://ng-api-http.us1.coralogix.com/grafana/api/dashboards/db' \
+            --header 'Content-Type: application/json' \
+            --header "Authorization: Bearer $CORALOGIX_GRAFANA_KEY" \
+            --data "@dashboard-payload.json" \
+            --fail-with-body
+          echo "Grafana dashboard deployed successfully for seats-manager"
+
