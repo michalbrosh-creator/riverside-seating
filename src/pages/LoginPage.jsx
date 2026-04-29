@@ -11,8 +11,9 @@ export default function LoginPage({ onLocalLogin }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    if (!email.toLowerCase().endsWith("@riverside.fm")) {
-      setError("Only @riverside.fm email addresses are allowed.");
+    const lowerEmail = email.toLowerCase();
+    if (!lowerEmail.endsWith("@riverside.fm") && !lowerEmail.endsWith("@riverside.com")) {
+      setError("Only @riverside.fm or @riverside.com email addresses are allowed.");
       return;
     }
     setLoading(true);
@@ -29,7 +30,7 @@ export default function LoginPage({ onLocalLogin }) {
     <div className="login-page">
       <div className="login-card">
         <h1 className="login-title">Riverside Seating</h1>
-        <p className="login-subtitle">Sign in with your Riverside email</p>
+        <p className="login-subtitle">Sign in with your Riverside email (@riverside.fm or @riverside.com)</p>
         {sent ? (
           <div className="login-sent">
             <p>Magic link sent to <strong>{email}</strong></p>
