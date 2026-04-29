@@ -9,7 +9,7 @@ import AdminTab from "./components/AdminTab";
 import LoginPage from "./pages/LoginPage";
 import "./App.css";
 
-const PERMANENT_ADMINS = ["michal.brosh@riverside.fm"];
+const PERMANENT_ADMINS = ["michal.brosh@riverside.fm", "michal.brosh@riverside.com"];
 
 const mapDesks = (floor, fn) => ({ ...floor, desks: floor.desks.map(fn) });
 const mapSeats = (desk, fn) => ({ ...desk, seats: desk.seats.map(fn) });
