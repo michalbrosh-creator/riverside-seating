@@ -1,28 +1,32 @@
 import { useEffect, useState } from "react";
-import { Routes, Route } from "react-router-dom";
-import { LoginCallback, useOktaAuth } from "@okta/okta-react";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { useSupabaseState } from "./hooks/useSupabaseState";
+import { supabase } from "./lib/supabase";
 import { DESK_LABELS, DESK_SIZES, createDesk, createFloor } from "./data";
 import { getAllFloorImages, saveFloorImage, removeFloorImage } from "./lib/floorImageStore";
-import { PERMANENT_ADMINS } from "./auth/oktaConfig";
 import FloorView from "./components/FloorView";
 import AdminTab from "./components/AdminTab";
 import LoginPage from "./pages/LoginPage";
 import "./App.css";
 
+const PERMANENT_ADMINS = ["michal.brosh@riverside.fm"];
+
 const mapDesks = (floor, fn) => ({ ...floor, desks: floor.desks.map(fn) });
 const mapSeats = (desk, fn) => ({ ...desk, seats: desk.seats.map(fn) });
 
 function SeatingApp() {
-  const { authState, oktaAuth: auth } = useOktaAuth();
+  const [session, setSession] = useState(null);
   const [localAuth, setLocalAuth] = useLocalStorage("seats_localAuth", false);
 
-  const isOktaAuthed = authState?.isAuthenticated;
-  const isAuthed = isOktaAuthed || localAuth;
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setSession(session));
+    return () => subscription.unsubscribe();
+  }, []);
 
-  const userEmail = authState?.idToken?.claims?.email || "";
-  const userName = authState?.idToken?.claims?.name || (localAuth ? "Local Admin" : "");
+  const isAuthed = !!session || localAuth;
+  const userEmail = session?.user?.email || "";
+  const userName = userEmail ? userEmail.split("@")[0] : (localAuth ? "Local Admin" : "");
 
   const [floors, setFloors, floorsReady] = useSupabaseState("seats_floors", [createFloor(1, "Floor 1")]);
   const [employees, setEmployees, employeesReady] = useSupabaseState("seats_employees", []);
@@ -220,7 +224,7 @@ function SeatingApp() {
           </span>
           <button
             className="logout-btn"
-            onClick={() => { if (isOktaAuthed) auth.signOut(); else setLocalAuth(false); }}
+            onClick={() => { if (session) supabase.auth.signOut(); else setLocalAuth(false); }}
           >
             Sign out
           </button>
@@ -282,10 +286,5 @@ function SeatingApp() {
 }
 
 export default function App() {
-  return (
-    <Routes>
-      <Route path="/login/callback" element={<LoginCallback />} />
-      <Route path="*" element={<SeatingApp />} />
-    </Routes>
-  );
+  return <SeatingApp />;
 }
