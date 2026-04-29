@@ -19,6 +19,7 @@ function SeatingApp() {
   const [localAuth, setLocalAuth] = useLocalStorage("seats_localAuth", false);
 
   useEffect(() => {
+    if (!supabase) return;
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setSession(session));
     return () => subscription.unsubscribe();
