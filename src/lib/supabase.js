@@ -1,12 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 
-export const SUPABASE_ENABLED = !!(
-  import.meta.env.VITE_SUPABASE_URL &&
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+const url = import.meta.env.VITE_SUPABASE_URL?.trim();
+const key = import.meta.env.VITE_SUPABASE_ANON_KEY?.replace(/\s/g, "");
 
-console.log("[supabase] URL:", import.meta.env.VITE_SUPABASE_URL, "| KEY starts:", import.meta.env.VITE_SUPABASE_ANON_KEY?.slice(0, 20));
+export const SUPABASE_ENABLED = !!(url && key);
 
-export const supabase = SUPABASE_ENABLED
-  ? createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY)
-  : null;
+export const supabase = SUPABASE_ENABLED ? createClient(url, key) : null;
