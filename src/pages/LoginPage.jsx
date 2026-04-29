@@ -17,10 +17,16 @@ export default function LoginPage({ onLocalLogin }) {
       return;
     }
     setLoading(true);
-    const { error: authError } = await supabase.auth.signInWithOtp({ email });
-    setLoading(false);
-    if (authError) setError(authError.message);
-    else setSent(true);
+    try {
+      const { error: authError } = await supabase.auth.signInWithOtp({ email });
+      setLoading(false);
+      if (authError) { console.error("[otp error]", authError); setError(authError.message); }
+      else setSent(true);
+    } catch (err) {
+      setLoading(false);
+      console.error("[otp exception]", err, JSON.stringify(err));
+      setError(String(err));
+    }
   };
 
   return (
