@@ -137,6 +137,17 @@ body {
   font-size: 0.8125rem; cursor: pointer; transition: color 0.15s;
 }
 .login-skip-btn:hover { color: #64748b; }
+.login-form { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
+.login-email-input {
+  width: 100%; padding: 11px 14px; border: 1.5px solid #e2e8f0;
+  border-radius: 8px; font-size: 0.9375rem; outline: none;
+  transition: border-color 0.15s; box-sizing: border-box;
+}
+.login-email-input:focus { border-color: #6366f1; }
+.login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.login-error { font-size: 0.8125rem; color: #dc2626; margin: 0; }
+.login-sent { text-align: center; padding: 12px 0 20px; color: #1e293b; line-height: 1.6; }
+.login-sent-hint { font-size: 0.8125rem; color: #94a3b8; margin-top: 4px; }
 
 /* ── FLOOR LAYOUT ── */
 .floor-content-full { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }

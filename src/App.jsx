@@ -1,35 +1,41 @@
 import { useEffect, useState } from "react";
-import { Routes, Route } from "react-router-dom";
-// import { LoginCallback, useOktaAuth } from "@okta/okta-react";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { useSupabaseState } from "./hooks/useSupabaseState";
+import { supabase } from "./lib/supabase";
 import { DESK_LABELS, DESK_SIZES, createDesk, createFloor } from "./data";
 import { getAllFloorImages, saveFloorImage, removeFloorImage } from "./lib/floorImageStore";
-// import { PERMANENT_ADMINS } from "./auth/oktaConfig";
-const PERMANENT_ADMINS = [];
 import FloorView from "./components/FloorView";
 import AdminTab from "./components/AdminTab";
+import FacilitiesTicketModal from "./components/FacilitiesTicketModal";
+import FacilitiesTicketsAdmin from "./components/FacilitiesTicketsAdmin";
 import LoginPage from "./pages/LoginPage";
 import "./App.css";
+
+const PERMANENT_ADMINS = ["michal.brosh@riverside.fm"];
 
 const mapDesks = (floor, fn) => ({ ...floor, desks: floor.desks.map(fn) });
 const mapSeats = (desk, fn) => ({ ...desk, seats: desk.seats.map(fn) });
 
 function SeatingApp() {
-  // const { authState, oktaAuth: auth } = useOktaAuth();
+  const [session, setSession] = useState(null);
   const [localAuth, setLocalAuth] = useLocalStorage("seats_localAuth", false);
 
-  const isOktaAuthed = false;
-  const isAuthed = localAuth;
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setSession(session));
+    return () => subscription.unsubscribe();
+  }, []);
 
-  const userEmail = "";
-  const userName = localAuth ? "Local Admin" : "";
+  const isAuthed = !!session || localAuth;
+  const userEmail = session?.user?.email || "";
+  const userName = userEmail ? userEmail.split("@")[0] : (localAuth ? "Local Admin" : "");
 
   const [floors, setFloors, floorsReady] = useSupabaseState("seats_floors", [createFloor(1, "Floor 1")]);
   const [employees, setEmployees, employeesReady] = useSupabaseState("seats_employees", []);
   // Per-user prefs stay in localStorage
   const [activeTab, setActiveTab] = useLocalStorage("seats_activeTab", "floor");
   const [activeFloorId, setActiveFloorId] = useLocalStorage("seats_activeFloorId", 1);
+  const [ticketModalOpen, setTicketModalOpen] = useState(false);
   const [floorImages, setFloorImages] = useState({});
   useEffect(() => {
     // Migrate any image previously saved in localStorage to IndexedDB, then free the space
@@ -112,7 +118,6 @@ function SeatingApp() {
 
   const renameDesk = (floorId, label, name) =>
     updateFloor(floorId, (f) => mapDesks(f, (d) => (d.label === label ? { ...d, name } : d)));
-
 
   const resizeDesk = (floorId, label, newSize) =>
     updateFloor(floorId, (f) => mapDesks(f, (d) => {
@@ -215,13 +220,16 @@ function SeatingApp() {
       <header className="app-header">
         <h1>Riverside Seating</h1>
         <div className="user-switcher">
+          <button className="facilities-ticket-btn" onClick={() => setTicketModalOpen(true)}>
+            Facilities Ticket
+          </button>
           <span className="user-label">
             {userName}
             {canAssign && <span className="admin-indicator">Admin</span>}
           </span>
           <button
             className="logout-btn"
-            onClick={() => setLocalAuth(false)}
+            onClick={() => { if (session) supabase.auth.signOut(); else setLocalAuth(false); }}
           >
             Sign out
           </button>
@@ -236,7 +244,19 @@ function SeatingApp() {
             Admin
           </button>
         )}
+        {canAssign && (
+          <button className={`tab ${activeTab === "tickets" ? "active" : ""}`} onClick={() => setActiveTab("tickets")}>
+            Tickets
+          </button>
+        )}
       </nav>
+      {ticketModalOpen && (
+        <FacilitiesTicketModal
+          userEmail={userEmail}
+          userName={userName}
+          onClose={() => setTicketModalOpen(false)}
+        />
+      )}
       <div className="app-body">
         {activeTab === "floor" || !canAssign ? (
           <FloorView
@@ -255,6 +275,8 @@ function SeatingApp() {
             onRenameDesk={renameDesk}
             floorImages={floorImages}
           />
+        ) : activeTab === "tickets" && canAssign ? (
+          <FacilitiesTicketsAdmin userEmail={userEmail} />
         ) : (
           <AdminTab
             floors={floors}
@@ -283,10 +305,5 @@ function SeatingApp() {
 }
 
 export default function App() {
-  return (
-    <Routes>
-      {/* <Route path="/login/callback" element={<LoginCallback />} /> */}
-      <Route path="*" element={<SeatingApp />} />
-    </Routes>
-  );
+  return <SeatingApp />;
 }
