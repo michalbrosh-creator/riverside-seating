@@ -17,10 +17,7 @@ export default function LoginPage({ onLocalLogin }) {
       return;
     }
     setLoading(true);
-    const { error: authError } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin },
-    });
+    const { error: authError } = await supabase.auth.signInWithOtp({ email });
     setLoading(false);
     if (authError) setError(authError.message);
     else setSent(true);
