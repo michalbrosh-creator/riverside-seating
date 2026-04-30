@@ -94,9 +94,7 @@ export default function AdminTab({
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (!file || !uploadingFloorId) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => onSetFloorImage(uploadingFloorId, ev.target.result);
-    reader.readAsDataURL(file);
+    onSetFloorImage(uploadingFloorId, file);
     e.target.value = "";
     setUploadingFloorId(null);
   };
