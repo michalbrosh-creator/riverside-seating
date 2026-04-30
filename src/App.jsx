@@ -36,13 +36,13 @@ function SeatingApp() {
   const [floorImages, setFloorImages] = useState({});
   useEffect(() => {
     if (!supabase) return;
-    supabase.storage.from("floor-images").list().then(({ data: files }) => {
+    supabase.storage.from("Floor Images").list().then(({ data: files }) => {
       if (!files) return;
       const images = {};
       files.forEach((f) => {
         const match = f.name.match(/^floor-(\w+)\./);
         if (match) {
-          const { data } = supabase.storage.from("floor-images").getPublicUrl(f.name);
+          const { data } = supabase.storage.from("Floor Images").getPublicUrl(f.name);
           images[match[1]] = data.publicUrl;
         }
       });
@@ -54,17 +54,17 @@ function SeatingApp() {
     if (!supabase) return;
     const ext = file.name.split(".").pop();
     const path = `floor-${floorId}.${ext}`;
-    const { error } = await supabase.storage.from("floor-images").upload(path, file, { upsert: true });
+    const { error } = await supabase.storage.from("Floor Images").upload(path, file, { upsert: true });
     if (error) { console.error("Image upload failed", error); return; }
-    const { data } = supabase.storage.from("floor-images").getPublicUrl(path);
+    const { data } = supabase.storage.from("Floor Images").getPublicUrl(path);
     setFloorImages((prev) => ({ ...prev, [String(floorId)]: data.publicUrl }));
   };
 
   const clearFloorImage = async (floorId) => {
     if (!supabase) return;
-    const { data: files } = await supabase.storage.from("floor-images").list();
+    const { data: files } = await supabase.storage.from("Floor Images").list();
     const toDelete = (files || []).filter((f) => f.name.startsWith(`floor-${floorId}.`)).map((f) => f.name);
-    if (toDelete.length) await supabase.storage.from("floor-images").remove(toDelete);
+    if (toDelete.length) await supabase.storage.from("Floor Images").remove(toDelete);
     setFloorImages((prev) => { const n = { ...prev }; delete n[String(floorId)]; return n; });
   };
 
