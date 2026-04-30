@@ -294,7 +294,7 @@ export default function FloorView({
   const CANVAS_H = 2000;
 
   const changeZoom = useCallback((delta) => {
-    setZoom((prev) => Math.min(2, Math.max(0.1, Math.round((prev + delta) * 100) / 100)));
+    setZoom((prev) => Math.min(4, Math.max(0.1, Math.round((prev + delta) * 100) / 100)));
   }, []);
 
   const fitToScreen = useCallback(() => {
