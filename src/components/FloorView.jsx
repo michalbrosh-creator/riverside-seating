@@ -286,8 +286,23 @@ export default function FloorView({
   const [deskDrag, setDeskDrag] = useState(null);
   const [picker, setPicker] = useState(null);
   const [seatPin, setSeatPin] = useState(null);
+  const [zoom, setZoom] = useState(1);
   const deskRefs = useRef({});
   const canvasScrollRef = useRef(null);
+
+  const CANVAS_W = 3000;
+  const CANVAS_H = 2000;
+
+  const changeZoom = useCallback((delta) => {
+    setZoom((prev) => Math.min(2, Math.max(0.25, Math.round((prev + delta) * 100) / 100)));
+  }, []);
+
+  const handleWheel = useCallback((e) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      changeZoom(e.deltaY < 0 ? 0.1 : -0.1);
+    }
+  }, [changeZoom]);
 
   const empMap = Object.fromEntries(employees.map((e) => [e.id, e]));
   const activeFloor = floors.find((f) => f.id === activeFloorId) || floors[0];
@@ -307,14 +322,14 @@ export default function FloorView({
       const canvasRect = canvas.getBoundingClientRect();
 
       // True canvas-space coordinates accounting for scroll
-      const pinX = deskRect.left - canvasRect.left + canvas.scrollLeft + deskRect.width / 2;
-      const pinY = deskRect.top - canvasRect.top + canvas.scrollTop + deskRect.height / 2;
+      const pinX = (deskRect.left - canvasRect.left + canvas.scrollLeft + deskRect.width / 2) / zoom;
+      const pinY = (deskRect.top - canvasRect.top + canvas.scrollTop + deskRect.height / 2) / zoom;
 
       setSeatPin({ x: pinX, y: pinY, key: Date.now() });
 
       canvas.scrollTo({
-        left: Math.max(0, pinX - canvas.clientWidth / 2),
-        top: Math.max(0, pinY - canvas.clientHeight / 2),
+        left: Math.max(0, pinX * zoom - canvas.clientWidth / 2),
+        top: Math.max(0, pinY * zoom - canvas.clientHeight / 2),
         behavior: "smooth",
       });
     }, 80);
@@ -336,9 +351,11 @@ export default function FloorView({
 
   const handleMouseMove = useCallback((e) => {
     if (deskDrag) {
-      onMoveDesk(activeFloorId, deskDrag.label, deskDrag.origX + (e.clientX - deskDrag.startX), deskDrag.origY + (e.clientY - deskDrag.startY));
+      onMoveDesk(activeFloorId, deskDrag.label,
+        deskDrag.origX + (e.clientX - deskDrag.startX) / zoom,
+        deskDrag.origY + (e.clientY - deskDrag.startY) / zoom);
     }
-  }, [deskDrag, activeFloorId, onMoveDesk]);
+  }, [deskDrag, activeFloorId, onMoveDesk, zoom]);
 
   const handleMouseUp = useCallback(() => {
     setDeskDrag(null);
@@ -372,6 +389,12 @@ export default function FloorView({
           ))}
         </div>
         <EmployeeSearch employees={employees} floors={floors} onNavigate={handleNavigate} />
+        <div className="zoom-controls">
+          <button className="zoom-btn" onClick={() => changeZoom(-0.1)}>−</button>
+          <span className="zoom-label">{Math.round(zoom * 100)}%</span>
+          <button className="zoom-btn" onClick={() => changeZoom(0.1)}>+</button>
+          <button className="zoom-btn zoom-reset" onClick={() => setZoom(1)}>Reset</button>
+        </div>
         {!canAssign && (
           <span className="floor-lock-notice">🔒 View only</span>
         )}
@@ -383,8 +406,10 @@ export default function FloorView({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onWheel={handleWheel}
       >
-        <div className="floor-canvas" onClick={() => { setSelectedDesk(null); setSeatPin(null); }}>
+        <div style={{ width: CANVAS_W * zoom, height: CANVAS_H * zoom, position: "relative", flexShrink: 0 }}>
+        <div className="floor-canvas" style={{ transform: `scale(${zoom})`, transformOrigin: "0 0", position: "absolute" }} onClick={() => { setSelectedDesk(null); setSeatPin(null); }}>
           {seatPin && (
             <div key={seatPin.key} className="seat-pin" style={{ left: seatPin.x, top: seatPin.y }}>
               <div className="seat-pin-head" />
@@ -427,6 +452,7 @@ export default function FloorView({
               </div>
             ))
           )}
+        </div>
         </div>
       </div>
 
