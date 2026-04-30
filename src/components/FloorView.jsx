@@ -294,8 +294,15 @@ export default function FloorView({
   const CANVAS_H = 2000;
 
   const changeZoom = useCallback((delta) => {
-    setZoom((prev) => Math.min(2, Math.max(0.25, Math.round((prev + delta) * 100) / 100)));
+    setZoom((prev) => Math.min(2, Math.max(0.1, Math.round((prev + delta) * 100) / 100)));
   }, []);
+
+  const fitToScreen = useCallback(() => {
+    const container = canvasScrollRef.current;
+    if (!container) return;
+    const scale = Math.min(container.clientWidth / CANVAS_W, container.clientHeight / CANVAS_H);
+    setZoom(Math.round(scale * 100) / 100);
+  }, [CANVAS_W, CANVAS_H]);
 
   const handleWheel = useCallback((e) => {
     if (e.ctrlKey || e.metaKey) {
@@ -393,7 +400,8 @@ export default function FloorView({
           <button className="zoom-btn" onClick={() => changeZoom(-0.1)}>−</button>
           <span className="zoom-label">{Math.round(zoom * 100)}%</span>
           <button className="zoom-btn" onClick={() => changeZoom(0.1)}>+</button>
-          <button className="zoom-btn zoom-reset" onClick={() => setZoom(1)}>Reset</button>
+          <button className="zoom-btn zoom-reset" onClick={() => setZoom(1)}>100%</button>
+          <button className="zoom-btn zoom-reset" onClick={fitToScreen}>Fit</button>
         </div>
         {!canAssign && (
           <span className="floor-lock-notice">🔒 View only</span>
