@@ -152,6 +152,20 @@ body {
 /* ── FLOOR LAYOUT ── */
 .floor-content-full { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 
+.zoom-controls {
+  display: flex; align-items: center; gap: 4px; margin-left: 12px; flex-shrink: 0;
+}
+.zoom-btn {
+  border: 1px solid #e2e8f0; background: white; border-radius: 6px;
+  padding: 3px 8px; cursor: pointer; font-size: 0.8rem; color: #475569;
+  line-height: 1.4; transition: background 0.1s;
+}
+.zoom-btn:hover { background: #f1f5f9; }
+.zoom-reset { font-size: 0.7rem; color: #94a3b8; }
+.zoom-label {
+  font-size: 0.75rem; color: #64748b; min-width: 38px; text-align: center;
+}
+
 .floor-lock-notice {
   margin-left: auto; align-self: center;
   padding: 5px 12px;
