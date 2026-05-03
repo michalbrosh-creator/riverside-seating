@@ -143,6 +143,19 @@ function SeatingApp() {
       return { ...d, size: newSize, seats: newSeats };
     }));
 
+  // ── Label ops ──
+  const addLabel = (floorId) =>
+    updateFloor(floorId, (f) => ({ ...f, labels: [...(f.labels || []), { id: Date.now(), name: "Room", x: 120, y: 120 }] }));
+
+  const removeLabel = (floorId, labelId) =>
+    updateFloor(floorId, (f) => ({ ...f, labels: (f.labels || []).filter((l) => l.id !== labelId) }));
+
+  const moveLabel = (floorId, labelId, x, y) =>
+    updateFloor(floorId, (f) => ({ ...f, labels: (f.labels || []).map((l) => l.id === labelId ? { ...l, x, y } : l) }));
+
+  const renameLabel = (floorId, labelId, name) =>
+    updateFloor(floorId, (f) => ({ ...f, labels: (f.labels || []).map((l) => l.id === labelId ? { ...l, name } : l) }));
+
   // ── Employee ops ──
   const addEmployee = (name, department, email) => {
     setEmployees((prev) => [...prev, { id: Date.now(), name, department, email: email || "", isAdmin: false }]);
@@ -268,6 +281,10 @@ function SeatingApp() {
             onRotateDesk={rotateDesk}
             onResizeDesk={resizeDesk}
             onRenameDesk={renameDesk}
+            onAddLabel={addLabel}
+            onRemoveLabel={removeLabel}
+            onMoveLabel={moveLabel}
+            onRenameLabel={renameLabel}
             floorImages={floorImages}
           />
         ) : (
@@ -283,6 +300,8 @@ function SeatingApp() {
             stats={{ occupied: assignedIds.size, available: totalSeats - assignedIds.size, desks: totalDesks }}
             onAddDesk={addDesk}
             onRemoveDesk={removeDesk}
+            onAddLabel={addLabel}
+            onRemoveLabel={removeLabel}
             floorImages={floorImages}
             onSetFloorImage={setFloorImage}
             onClearFloorImage={clearFloorImage}

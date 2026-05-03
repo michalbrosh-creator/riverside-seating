@@ -70,7 +70,7 @@ function EmployeeTable({ employees, onRemove, onToggleAdmin }) {
 export default function AdminTab({
   floors, activeFloorId, employees, deskSizes, stats,
   onSelectFloor, onAddFloor, onRenameFloor, onRemoveFloor,
-  onAddDesk, onRemoveDesk,
+  onAddDesk, onRemoveDesk, onAddLabel, onRemoveLabel,
   onAddEmployee, onRemoveEmployee, onToggleAdmin, onImportEmployees,
   floorImages, onSetFloorImage, onClearFloorImage,
 }) {
@@ -193,6 +193,7 @@ export default function AdminTab({
             ))}
           </div>
           <button className="btn-primary sm" onClick={() => onAddDesk(activeFloorId, selectedSize)}>+ Add Desk</button>
+          <button className="btn-secondary sm" onClick={() => onAddLabel(activeFloorId)}>+ Add Room Label</button>
         </div>
 
         {allDesks.length === 0 ? (

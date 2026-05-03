@@ -21,4 +21,4 @@ export const createDesk = (label, size, x = 40, y = 40) => ({
   })),
 });
 
-export const createFloor = (id, name) => ({ id, name, desks: [] });
+export const createFloor = (id, name) => ({ id, name, desks: [], labels: [] });

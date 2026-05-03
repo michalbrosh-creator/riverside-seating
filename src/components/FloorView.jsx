@@ -198,20 +198,21 @@ function EmployeeSearch({ employees, floors, onNavigate }) {
             deskLabel: desk.label,
             deskName: desk.name || desk.label,
             seatNumber: seat.label,
-            deskX: desk.x,
-            deskY: desk.y,
           };
         }
       });
     });
   });
 
-  const results = query.trim()
-    ? employees.filter((e) =>
-        e.name.toLowerCase().includes(query.toLowerCase()) ||
-        (e.department || "").toLowerCase().includes(query.toLowerCase())
-      ).slice(0, 8)
-    : [];
+  const allRooms = floors.flatMap((f) =>
+    (f.labels || []).map((l) => ({ ...l, floorId: f.id, floorName: f.name }))
+  );
+
+  const q = query.trim().toLowerCase();
+  const empResults = q ? employees.filter((e) =>
+    e.name.toLowerCase().includes(q) || (e.department || "").toLowerCase().includes(q)
+  ).slice(0, 6) : [];
+  const roomResults = q ? allRooms.filter((r) => r.name.toLowerCase().includes(q)).slice(0, 4) : [];
 
   useEffect(() => {
     const onClickOutside = (e) => {
@@ -222,11 +223,16 @@ function EmployeeSearch({ employees, floors, onNavigate }) {
   }, []);
 
   const handleSelect = (emp) => {
-    const loc = locationMap[emp.id];
-    onNavigate(emp, loc || null);
-    setQuery("");
-    setOpen(false);
+    onNavigate(emp, locationMap[emp.id] || null);
+    setQuery(""); setOpen(false);
   };
+
+  const handleSelectRoom = (room) => {
+    onNavigate(room, { type: "room", floorId: room.floorId, x: room.x, y: room.y });
+    setQuery(""); setOpen(false);
+  };
+
+  const hasResults = empResults.length > 0 || roomResults.length > 0;
 
   return (
     <div className="floor-search-wrap" ref={wrapRef}>
@@ -234,7 +240,7 @@ function EmployeeSearch({ employees, floors, onNavigate }) {
         <span className="floor-search-icon">⌕</span>
         <input
           className="floor-search-input"
-          placeholder="Find employee…"
+          placeholder="Find employee or room…"
           value={query}
           onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
@@ -243,9 +249,19 @@ function EmployeeSearch({ employees, floors, onNavigate }) {
           <button className="floor-search-clear" onClick={() => { setQuery(""); setOpen(false); }}>✕</button>
         )}
       </div>
-      {open && results.length > 0 && (
+      {open && hasResults && (
         <ul className="floor-search-results">
-          {results.map((emp) => {
+          {roomResults.map((room) => (
+            <li key={`room-${room.id}`} className="floor-search-item" onClick={() => handleSelectRoom(room)}>
+              <div className="emp-avatar sm room-avatar">⊞</div>
+              <div className="floor-search-info">
+                <span className="emp-name">{room.name}</span>
+                <span className="emp-dept">Meeting Room</span>
+              </div>
+              {floors.length > 1 && <span className="floor-search-location"><span className="location-floor">{room.floorName}</span></span>}
+            </li>
+          ))}
+          {empResults.map((emp) => {
             const loc = locationMap[emp.id];
             return (
               <li key={emp.id} className="floor-search-item" onClick={() => handleSelect(emp)}>
@@ -267,8 +283,48 @@ function EmployeeSearch({ employees, floors, onNavigate }) {
           })}
         </ul>
       )}
-      {open && query.trim() && results.length === 0 && (
-        <div className="floor-search-empty">No employees found</div>
+      {open && q && !hasResults && (
+        <div className="floor-search-empty">No results found</div>
+      )}
+    </div>
+  );
+}
+
+function LabelBlock({ label, canAssign, onDragStart, onRename, onRemove }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(label.name);
+
+  useEffect(() => { setName(label.name); }, [label.name]);
+
+  const commit = () => {
+    setEditing(false);
+    if (name.trim()) onRename(name.trim());
+    else setName(label.name);
+  };
+
+  return (
+    <div
+      className={`floor-label${canAssign ? " floor-label-editable" : ""}`}
+      style={{ position: "absolute", left: label.x, top: label.y }}
+      data-label-id={label.id}
+      onMouseDown={canAssign ? (e) => { e.stopPropagation(); onDragStart(e, label); } : undefined}
+      onDoubleClick={canAssign ? (e) => { e.stopPropagation(); setEditing(true); } : undefined}
+    >
+      {editing ? (
+        <input
+          className="floor-label-input"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => { if (e.key === "Enter") e.target.blur(); if (e.key === "Escape") { setName(label.name); setEditing(false); } }}
+          autoFocus
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : (
+        <span className="floor-label-text">{label.name}</span>
+      )}
+      {canAssign && (
+        <button className="floor-label-remove" onClick={(e) => { e.stopPropagation(); onRemove(); }}>✕</button>
       )}
     </div>
   );
@@ -279,6 +335,7 @@ const RESIZE_OPTIONS = [4, 6, 8];
 export default function FloorView({
   floors, activeFloorId, employees, assignedIds, canAssign,
   onSelectFloor, onAssign, onUnassign, onToggleSeatDisabled, onMoveDesk, onRotateDesk, onResizeDesk, onRenameDesk,
+  onAddLabel, onRemoveLabel, onMoveLabel, onRenameLabel,
   floorImages,
 }) {
   const [selectedDesk, setSelectedDesk] = useState(null);
@@ -287,6 +344,7 @@ export default function FloorView({
   const [picker, setPicker] = useState(null);
   const [seatPin, setSeatPin] = useState(null);
   const [zoom, setZoom] = useState(1);
+  const [labelDrag, setLabelDrag] = useState(null);
   const deskRefs = useRef({});
   const canvasScrollRef = useRef(null);
 
@@ -315,34 +373,36 @@ export default function FloorView({
   const activeFloor = floors.find((f) => f.id === activeFloorId) || floors[0];
   const activeDesks = activeFloor?.desks || [];
 
-  const handleNavigate = useCallback((emp, loc) => {
+  const handleNavigate = useCallback((item, loc) => {
     if (!loc) return;
     if (loc.floorId !== activeFloorId) onSelectFloor(loc.floorId);
 
-    // Wait for any floor switch to render before measuring
     setTimeout(() => {
       const canvas = canvasScrollRef.current;
-      const deskEl = document.querySelector(`[data-desk-label="${loc.deskLabel}"]`);
-      if (!deskEl || !canvas) return;
+      if (!canvas) return;
 
-      const deskRect = deskEl.getBoundingClientRect();
-      const canvasRect = canvas.getBoundingClientRect();
-
-      // True canvas-space coordinates accounting for scroll
-      const pinX = (deskRect.left - canvasRect.left + canvas.scrollLeft + deskRect.width / 2) / zoom;
-      const pinY = (deskRect.top - canvasRect.top + canvas.scrollTop + deskRect.height / 2) / zoom;
+      let pinX, pinY;
+      if (loc.type === "room") {
+        pinX = loc.x;
+        pinY = loc.y;
+      } else {
+        const deskEl = document.querySelector(`[data-desk-label="${loc.deskLabel}"]`);
+        if (!deskEl) return;
+        const deskRect = deskEl.getBoundingClientRect();
+        const canvasRect = canvas.getBoundingClientRect();
+        pinX = (deskRect.left - canvasRect.left + canvas.scrollLeft + deskRect.width / 2) / zoom;
+        pinY = (deskRect.top - canvasRect.top + canvas.scrollTop + deskRect.height / 2) / zoom;
+      }
 
       setSeatPin({ x: pinX, y: pinY, key: Date.now() });
-
       canvas.scrollTo({
         left: Math.max(0, pinX * zoom - canvas.clientWidth / 2),
         top: Math.max(0, pinY * zoom - canvas.clientHeight / 2),
         behavior: "smooth",
       });
+      setTimeout(() => setSeatPin(null), 3500);
     }, 80);
-
-    setTimeout(() => setSeatPin(null), 3500);
-  }, [activeFloorId, onSelectFloor]);
+  }, [activeFloorId, onSelectFloor, zoom]);
 
   const handleDeskDragStart = useCallback((e, desk) => {
     setDeskDrag({ label: desk.label, startX: e.clientX, startY: e.clientY, origX: desk.x, origY: desk.y });
@@ -362,10 +422,20 @@ export default function FloorView({
         deskDrag.origX + (e.clientX - deskDrag.startX) / zoom,
         deskDrag.origY + (e.clientY - deskDrag.startY) / zoom);
     }
-  }, [deskDrag, activeFloorId, onMoveDesk, zoom]);
+    if (labelDrag) {
+      onMoveLabel(activeFloorId, labelDrag.id,
+        labelDrag.origX + (e.clientX - labelDrag.startX) / zoom,
+        labelDrag.origY + (e.clientY - labelDrag.startY) / zoom);
+    }
+  }, [deskDrag, labelDrag, activeFloorId, onMoveDesk, onMoveLabel, zoom]);
 
   const handleMouseUp = useCallback(() => {
     setDeskDrag(null);
+    setLabelDrag(null);
+  }, []);
+
+  const handleLabelDragStart = useCallback((e, label) => {
+    setLabelDrag({ id: label.id, startX: e.clientX, startY: e.clientY, origX: label.x, origY: label.y });
   }, []);
 
   const handleSeatClick = useCallback((seat, floorId, e) => {
@@ -460,6 +530,16 @@ export default function FloorView({
               </div>
             ))
           )}
+          {(activeFloor?.labels || []).map((label) => (
+            <LabelBlock
+              key={label.id}
+              label={label}
+              canAssign={canAssign}
+              onDragStart={handleLabelDragStart}
+              onRename={(name) => onRenameLabel(activeFloorId, label.id, name)}
+              onRemove={() => onRemoveLabel(activeFloorId, label.id)}
+            />
+          ))}
         </div>
         </div>
       </div>
