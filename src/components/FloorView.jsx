@@ -362,11 +362,17 @@ export default function FloorView({
     setZoom(Math.round(scale * 100) / 100);
   }, [CANVAS_W, CANVAS_H]);
 
-  const handleWheel = useCallback((e) => {
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      changeZoom(e.deltaY < 0 ? 0.1 : -0.1);
-    }
+  useEffect(() => {
+    const el = canvasScrollRef.current;
+    if (!el) return;
+    const handler = (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        changeZoom(e.deltaY < 0 ? 0.1 : -0.1);
+      }
+    };
+    el.addEventListener("wheel", handler, { passive: false });
+    return () => el.removeEventListener("wheel", handler);
   }, [changeZoom]);
 
   const empMap = Object.fromEntries(employees.map((e) => [e.id, e]));
@@ -484,7 +490,6 @@ export default function FloorView({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        onWheel={handleWheel}
       >
         <div style={{ width: CANVAS_W * zoom, height: CANVAS_H * zoom, position: "relative", flexShrink: 0 }}>
         <div className="floor-canvas" style={{ transform: `scale(${zoom})`, transformOrigin: "0 0", position: "absolute" }} onClick={() => { setSelectedDesk(null); setSeatPin(null); }}>
