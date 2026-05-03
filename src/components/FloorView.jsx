@@ -116,7 +116,7 @@ function DeskBlock({ desk, empMap, floorId, canAssign, onSeatClick, onUnassign, 
       style={{ left: desk.x, top: desk.y, transform: `rotate(${desk.rotation}deg)` }}
       onClick={(e) => { e.stopPropagation(); onSelect(desk.label); }}
     >
-      {isSelected && (
+      {isSelected && canAssign && (
         <button
           className="rotation-handle"
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRotateClick(desk); }}
@@ -126,7 +126,7 @@ function DeskBlock({ desk, empMap, floorId, canAssign, onSeatClick, onUnassign, 
       <div
         className="desk-block"
         data-desk-label={desk.label}
-        onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onDragStart(e, desk); }}
+        onMouseDown={canAssign ? (e) => { e.preventDefault(); e.stopPropagation(); onDragStart(e, desk); } : undefined}
       >
         <div className="desk-block-header">
           {editingName ? (
@@ -143,8 +143,8 @@ function DeskBlock({ desk, empMap, floorId, canAssign, onSeatClick, onUnassign, 
           ) : (
             <span
               className="desk-block-title"
-              title="Double-click to rename"
-              onDoubleClick={(e) => { e.stopPropagation(); setNameVal(deskName); setEditingName(true); }}
+              title={canAssign ? "Double-click to rename" : undefined}
+              onDoubleClick={canAssign ? (e) => { e.stopPropagation(); setNameVal(deskName); setEditingName(true); } : undefined}
             >{deskName}</span>
           )}
           <span className="desk-occupancy">{occupied}/{desk.size}</span>
@@ -152,7 +152,7 @@ function DeskBlock({ desk, empMap, floorId, canAssign, onSeatClick, onUnassign, 
             <span className="desk-rotation-label">{displayRotation}°</span>
           )}
         </div>
-        {isSelected && (
+        {isSelected && canAssign && (
           <div className="desk-resize-bar">
             <span className="desk-resize-label">Seats:</span>
             {RESIZE_OPTIONS.filter((s) => s !== desk.size).map((s) => (
