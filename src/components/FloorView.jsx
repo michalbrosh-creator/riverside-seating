@@ -389,8 +389,12 @@ export default function FloorView({
 
       let pinX, pinY;
       if (loc.type === "room") {
-        pinX = loc.x;
-        pinY = loc.y;
+        canvas.scrollTo({
+          left: Math.max(0, loc.x * zoom - canvas.clientWidth / 2),
+          top: Math.max(0, loc.y * zoom - canvas.clientHeight / 2),
+          behavior: "smooth",
+        });
+        return;
       } else {
         const deskEl = document.querySelector(`[data-desk-label="${loc.deskLabel}"]`);
         if (!deskEl) return;
