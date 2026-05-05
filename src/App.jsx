@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useOktaAuth } from "@okta/okta-react";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { useSupabaseState } from "./hooks/useSupabaseState";
 import { supabase } from "./lib/supabase";
@@ -14,18 +15,11 @@ const mapDesks = (floor, fn) => ({ ...floor, desks: floor.desks.map(fn) });
 const mapSeats = (desk, fn) => ({ ...desk, seats: desk.seats.map(fn) });
 
 function SeatingApp() {
-  const [session, setSession] = useState(null);
+  const { authState, oktaAuth } = useOktaAuth();
   const [localAuth, setLocalAuth] = useLocalStorage("seats_localAuth", false);
 
-  useEffect(() => {
-    if (!supabase) return;
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setSession(session));
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const isAuthed = !!session || localAuth;
-  const userEmail = session?.user?.email || "";
+  const isAuthed = authState?.isAuthenticated || localAuth;
+  const userEmail = authState?.idToken?.claims?.email || "";
   const userName = userEmail ? userEmail.split("@")[0] : (localAuth ? "Local Admin" : "");
 
   const [floors, setFloors, floorsReady] = useSupabaseState("seats_floors", [createFloor(1, "Floor 1")]);
@@ -229,6 +223,15 @@ function SeatingApp() {
     return <LoginPage onLocalLogin={() => setLocalAuth(true)} />;
   }
 
+  if (authState === null) {
+    return (
+      <div className="app-loading">
+        <div className="app-loading-spinner" />
+        <span>Loading…</span>
+      </div>
+    );
+  }
+
   if (!ready) {
     return (
       <div className="app-loading">
@@ -249,7 +252,7 @@ function SeatingApp() {
           </span>
           <button
             className="logout-btn"
-            onClick={() => { if (session) supabase.auth.signOut(); else setLocalAuth(false); }}
+            onClick={() => { if (authState?.isAuthenticated) oktaAuth.signOut({ postLogoutRedirectUri: window.location.origin }); else setLocalAuth(false); }}
           >
             Sign out
           </button>
