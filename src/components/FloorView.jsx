@@ -56,7 +56,7 @@ function EmployeePicker({ employees, assignedIds, position, onAssign, onUnassign
   );
 }
 
-function SeatCell({ seat, employee, canAssign, onSeatClick, onUnassign, onToggleSeatDisabled }) {
+function SeatCell({ seat, employee, canAssign, onSeatClick, onUnassign, onToggleSeatDisabled, rotation }) {
   const isDisabled = !!seat.disabled;
   const clickable = canAssign && !employee && !isDisabled;
 
@@ -71,7 +71,7 @@ function SeatCell({ seat, employee, canAssign, onSeatClick, onUnassign, onToggle
         <span className="floor-seat-disabled-label">N/A</span>
       ) : employee ? (
         <div className="seat-employee" onClick={(e) => { if (canAssign) { e.stopPropagation(); onSeatClick(seat, e); } }}>
-          <span className="floor-seat-name">{employee.name.split(" ")[0]}</span>
+          <span className="floor-seat-name" style={rotation ? { transform: `rotate(${-rotation}deg)`, display: "inline-block" } : undefined}>{employee.name.split(" ")[0]}</span>
           {canAssign && <span className="seat-edit-hint">✎</span>}
         </div>
       ) : (
@@ -174,6 +174,7 @@ function DeskBlock({ desk, empMap, floorId, canAssign, onSeatClick, onUnassign, 
               onSeatClick={(s, e) => onSeatClick(s, floorId, e)}
               onUnassign={onUnassign}
               onToggleSeatDisabled={onToggleSeatDisabled}
+              rotation={desk.rotation}
             />
           ))}
         </div>
