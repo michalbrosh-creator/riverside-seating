@@ -8,7 +8,7 @@ import App from "./App.jsx";
 
 const oktaAuth = new OktaAuth({
   issuer: "https://riversidefm.okta.com",
-  clientId: "0oa12miqwsgaJF0pu698",
+  clientId: "0oa12nsqzwmYELz4V698",
   redirectUri: `${window.location.origin}/login/callback`,
   scopes: ["openid", "email", "profile"],
   pkce: true,
