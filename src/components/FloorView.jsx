@@ -407,10 +407,13 @@ export default function FloorView({
         pinY = (deskRect.top - canvasRect.top + canvas.scrollTop + deskRect.height / 2) / zoom;
       }
 
+      const targetZoom = Math.max(zoom, 0.5);
+      if (targetZoom !== zoom) setZoom(targetZoom);
+
       setSeatPin({ x: pinX, y: pinY, key: Date.now() });
       canvas.scrollTo({
-        left: Math.max(0, pinX * zoom - canvas.clientWidth / 2),
-        top: Math.max(0, pinY * zoom - canvas.clientHeight / 2),
+        left: Math.max(0, pinX * targetZoom - canvas.clientWidth / 2),
+        top: Math.max(0, pinY * targetZoom - canvas.clientHeight / 2),
         behavior: "smooth",
       });
       setTimeout(() => setSeatPin(null), 3500);
