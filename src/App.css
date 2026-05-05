@@ -245,6 +245,7 @@ body {
   background: #e8edf5; min-height: 0;
 }
 .canvas-scroll.cursor-grabbing { cursor: grabbing !important; }
+.canvas-scroll.cursor-grab-empty .floor-canvas { cursor: grab; }
 .canvas-scroll.cursor-crosshair { cursor: crosshair !important; }
 
 .floor-canvas {

@@ -345,6 +345,8 @@ export default function FloorView({
   const [seatPin, setSeatPin] = useState(null);
   const [zoom, setZoom] = useState(1);
   const [labelDrag, setLabelDrag] = useState(null);
+  const [isPanning, setIsPanning] = useState(false);
+  const panStartRef = useRef(null);
   const deskRefs = useRef({});
   const canvasScrollRef = useRef(null);
 
@@ -426,6 +428,18 @@ export default function FloorView({
     onResizeDesk(activeFloorId, desk.label, newSize);
   }, [activeFloorId, onResizeDesk]);
 
+  const handleCanvasMouseDown = useCallback((e) => {
+    if (e.target === e.currentTarget) {
+      e.preventDefault();
+      setIsPanning(true);
+      panStartRef.current = {
+        x: e.clientX, y: e.clientY,
+        scrollLeft: canvasScrollRef.current.scrollLeft,
+        scrollTop: canvasScrollRef.current.scrollTop,
+      };
+    }
+  }, []);
+
   const handleMouseMove = useCallback((e) => {
     if (deskDrag) {
       onMoveDesk(activeFloorId, deskDrag.label,
@@ -437,11 +451,18 @@ export default function FloorView({
         labelDrag.origX + (e.clientX - labelDrag.startX) / zoom,
         labelDrag.origY + (e.clientY - labelDrag.startY) / zoom);
     }
-  }, [deskDrag, labelDrag, activeFloorId, onMoveDesk, onMoveLabel, zoom]);
+    if (isPanning && panStartRef.current) {
+      const canvas = canvasScrollRef.current;
+      canvas.scrollLeft = panStartRef.current.scrollLeft - (e.clientX - panStartRef.current.x);
+      canvas.scrollTop = panStartRef.current.scrollTop - (e.clientY - panStartRef.current.y);
+    }
+  }, [deskDrag, labelDrag, isPanning, activeFloorId, onMoveDesk, onMoveLabel, zoom]);
 
   const handleMouseUp = useCallback(() => {
     setDeskDrag(null);
     setLabelDrag(null);
+    setIsPanning(false);
+    panStartRef.current = null;
   }, []);
 
   const handleLabelDragStart = useCallback((e, label) => {
@@ -490,13 +511,13 @@ export default function FloorView({
 
       <div
         ref={canvasScrollRef}
-        className={`canvas-scroll ${isMoving ? "cursor-grabbing" : ""}`}
+        className={`canvas-scroll ${isMoving || isPanning ? "cursor-grabbing" : "cursor-grab-empty"}`}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
         <div style={{ width: CANVAS_W * zoom, height: CANVAS_H * zoom, position: "relative", flexShrink: 0 }}>
-        <div className="floor-canvas" style={{ transform: `scale(${zoom})`, transformOrigin: "0 0", position: "absolute" }} onClick={() => { setSelectedDesk(null); setSeatPin(null); }}>
+        <div className="floor-canvas" style={{ transform: `scale(${zoom})`, transformOrigin: "0 0", position: "absolute" }} onClick={() => { setSelectedDesk(null); setSeatPin(null); }} onMouseDown={handleCanvasMouseDown}>
           {seatPin && (
             <div key={seatPin.key} className="seat-pin" style={{ left: seatPin.x, top: seatPin.y }}>
               <div className="seat-pin-head" />
