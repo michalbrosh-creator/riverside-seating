@@ -430,7 +430,7 @@ export default function FloorView({
   }, [activeFloorId, onResizeDesk]);
 
   const handleCanvasMouseDown = useCallback((e) => {
-    if (e.target === e.currentTarget) {
+    if (!e.target.closest(".desk-outer, .floor-label, .emp-picker, .seat-pin")) {
       e.preventDefault();
       setIsPanning(true);
       panStartRef.current = {
@@ -513,12 +513,13 @@ export default function FloorView({
       <div
         ref={canvasScrollRef}
         className={`canvas-scroll ${isMoving || isPanning ? "cursor-grabbing" : "cursor-grab-empty"}`}
+        onMouseDown={handleCanvasMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
         <div style={{ width: CANVAS_W * zoom, height: CANVAS_H * zoom, position: "relative", flexShrink: 0 }}>
-        <div className="floor-canvas" style={{ transform: `scale(${zoom})`, transformOrigin: "0 0", position: "absolute" }} onClick={() => { setSelectedDesk(null); setSeatPin(null); }} onMouseDown={handleCanvasMouseDown}>
+        <div className="floor-canvas" style={{ transform: `scale(${zoom})`, transformOrigin: "0 0", position: "absolute" }} onClick={() => { setSelectedDesk(null); setSeatPin(null); }}>
           {seatPin && (
             <div key={seatPin.key} className="seat-pin" style={{ left: seatPin.x, top: seatPin.y }}>
               <div className="seat-pin-head" />
