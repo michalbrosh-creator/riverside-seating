@@ -12,9 +12,6 @@ export default function LoginPage({ onLocalLogin }) {
         <button className="login-btn" onClick={() => oktaAuth.signInWithRedirect({ originalUri: "/" })}>
           Sign in with Okta
         </button>
-        <button className="login-skip-btn" onClick={onLocalLogin}>
-          Continue as local admin
-        </button>
       </div>
     </div>
   );
