@@ -407,7 +407,7 @@ export default function FloorView({
         pinY = (deskRect.top - canvasRect.top + canvas.scrollTop + deskRect.height / 2) / zoom;
       }
 
-      const targetZoom = Math.max(zoom, 0.5);
+      const targetZoom = Math.max(zoom, 1);
       if (targetZoom !== zoom) setZoom(targetZoom);
 
       setHighlightedDesk(loc.deskLabel);
