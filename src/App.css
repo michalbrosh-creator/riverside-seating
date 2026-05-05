@@ -336,11 +336,11 @@ body {
 }
 
 @keyframes desk-pulse {
-  0%   { box-shadow: 0 0 0 4px rgba(99,102,241,1),   0 0 32px rgba(99,102,241,0.5); }
-  50%  { box-shadow: 0 0 0 12px rgba(99,102,241,0.2), 0 0 48px rgba(99,102,241,0.3); }
-  100% { box-shadow: 0 0 0 4px rgba(99,102,241,1),   0 0 32px rgba(99,102,241,0.5); }
+  0%   { box-shadow: 0 0 0 4px rgba(251,146,60,1),  0 0 40px rgba(251,146,60,0.8); background: rgba(255,237,213,0.95); }
+  50%  { box-shadow: 0 0 0 14px rgba(251,146,60,0.3), 0 0 60px rgba(251,146,60,0.4); background: rgba(255,255,255,0.95); }
+  100% { box-shadow: 0 0 0 4px rgba(251,146,60,1),  0 0 40px rgba(251,146,60,0.8); background: rgba(255,237,213,0.95); }
 }
-.desk-outer.highlighted > .desk-block { animation: desk-pulse 0.7s ease-in-out 4; }
+.desk-outer.highlighted > .desk-block { animation: desk-pulse 0.6s ease-in-out 5; }
 
 .rotation-handle {
   position: absolute; top: -40px; left: 50%;

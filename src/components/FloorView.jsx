@@ -410,13 +410,14 @@ export default function FloorView({
       const targetZoom = Math.max(zoom, 0.5);
       if (targetZoom !== zoom) setZoom(targetZoom);
 
+      setHighlightedDesk(loc.deskLabel);
       setSeatPin({ x: pinX, y: pinY, key: Date.now() });
       canvas.scrollTo({
         left: Math.max(0, pinX * targetZoom - canvas.clientWidth / 2),
         top: Math.max(0, pinY * targetZoom - canvas.clientHeight / 2),
         behavior: "smooth",
       });
-      setTimeout(() => setSeatPin(null), 3500);
+      setTimeout(() => { setSeatPin(null); setHighlightedDesk(null); }, 3500);
     }, 80);
   }, [activeFloorId, onSelectFloor, zoom]);
 
