@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { useOktaAuth } from "@okta/okta-react";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { useSupabaseState } from "./hooks/useSupabaseState";
 import { supabase } from "./lib/supabase";
 import { DESK_LABELS, DESK_SIZES, createDesk, createFloor } from "./data";
+import { getAllFloorImages, saveFloorImage, removeFloorImage } from "./lib/floorImageStore";
 import FloorView from "./components/FloorView";
 import AdminTab from "./components/AdminTab";
 import FacilitiesTicketModal from "./components/FacilitiesTicketModal";
@@ -11,64 +11,55 @@ import FacilitiesTicketsAdmin from "./components/FacilitiesTicketsAdmin";
 import LoginPage from "./pages/LoginPage";
 import "./App.css";
 
-const PERMANENT_ADMINS = ["michal.brosh@riverside.fm", "michal.brosh@riverside.com"];
+const PERMANENT_ADMINS = ["michal.brosh@riverside.fm"];
 
 const mapDesks = (floor, fn) => ({ ...floor, desks: floor.desks.map(fn) });
 const mapSeats = (desk, fn) => ({ ...desk, seats: desk.seats.map(fn) });
 
 function SeatingApp() {
-  const { authState, oktaAuth } = useOktaAuth();
+  const [session, setSession] = useState(null);
   const [localAuth, setLocalAuth] = useLocalStorage("seats_localAuth", false);
 
-  const isAuthed = authState?.isAuthenticated || localAuth;
-  const userEmail = authState?.idToken?.claims?.email || "";
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setSession(session));
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const isAuthed = !!session || localAuth;
+  const userEmail = session?.user?.email || "";
   const userName = userEmail ? userEmail.split("@")[0] : (localAuth ? "Local Admin" : "");
 
   const [floors, setFloors, floorsReady] = useSupabaseState("seats_floors", [createFloor(1, "Floor 1")]);
   const [employees, setEmployees, employeesReady] = useSupabaseState("seats_employees", []);
-  // Per-user prefs stay in localStorage
   const [activeTab, setActiveTab] = useLocalStorage("seats_activeTab", "floor");
-  const [ticketModalOpen, setTicketModalOpen] = useState(false);
   const [activeFloorId, setActiveFloorId] = useLocalStorage("seats_activeFloorId", 1);
   const [ticketModalOpen, setTicketModalOpen] = useState(false);
   const [floorImages, setFloorImages] = useState({});
+
   useEffect(() => {
-    if (!supabase) return;
-    supabase.storage.from("Floor Images").list().then(({ data: files }) => {
-      if (!files) return;
-      const images = {};
-      files.forEach((f) => {
-        const match = f.name.match(/^floor-(\w+)\./);
-        if (match) {
-          const { data } = supabase.storage.from("Floor Images").getPublicUrl(f.name);
-          images[match[1]] = data.publicUrl;
-        }
-      });
-      setFloorImages(images);
-    });
+    try {
+      const old = localStorage.getItem("seats_floorImages");
+      if (old) {
+        const parsed = JSON.parse(old);
+        Object.entries(parsed).forEach(([id, url]) => saveFloorImage(id, url));
+        localStorage.removeItem("seats_floorImages");
+      }
+    } catch {}
+    getAllFloorImages().then(setFloorImages);
   }, []);
 
-  const setFloorImage = async (floorId, file) => {
-    if (!supabase) return;
-    const ext = file.name.split(".").pop();
-    const path = `floor-${floorId}.${ext}`;
-    const { error } = await supabase.storage.from("Floor Images").upload(path, file, { upsert: true });
-    if (error) { console.error("Image upload failed", error); return; }
-    const { data } = supabase.storage.from("Floor Images").getPublicUrl(path);
-    setFloorImages((prev) => ({ ...prev, [String(floorId)]: data.publicUrl }));
+  const setFloorImage = (floorId, dataUrl) => {
+    saveFloorImage(floorId, dataUrl);
+    setFloorImages((prev) => ({ ...prev, [String(floorId)]: dataUrl }));
   };
-
-  const clearFloorImage = async (floorId) => {
-    if (!supabase) return;
-    const { data: files } = await supabase.storage.from("Floor Images").list();
-    const toDelete = (files || []).filter((f) => f.name.startsWith(`floor-${floorId}.`)).map((f) => f.name);
-    if (toDelete.length) await supabase.storage.from("Floor Images").remove(toDelete);
+  const clearFloorImage = (floorId) => {
+    removeFloorImage(floorId);
     setFloorImages((prev) => { const n = { ...prev }; delete n[String(floorId)]; return n; });
   };
 
   const ready = floorsReady && employeesReady;
 
-  // Keep activeFloorId valid if floors changed (e.g. after Supabase load)
   useEffect(() => {
     if (!ready || floors.length === 0) return;
     if (!floors.find((f) => f.id === activeFloorId)) setActiveFloorId(floors[0].id);
@@ -139,19 +130,6 @@ function SeatingApp() {
       );
       return { ...d, size: newSize, seats: newSeats };
     }));
-
-  // ── Label ops ──
-  const addLabel = (floorId) =>
-    updateFloor(floorId, (f) => ({ ...f, labels: [...(f.labels || []), { id: Date.now(), name: "Room", x: 120, y: 120 }] }));
-
-  const removeLabel = (floorId, labelId) =>
-    updateFloor(floorId, (f) => ({ ...f, labels: (f.labels || []).filter((l) => l.id !== labelId) }));
-
-  const moveLabel = (floorId, labelId, x, y) =>
-    updateFloor(floorId, (f) => ({ ...f, labels: (f.labels || []).map((l) => l.id === labelId ? { ...l, x, y } : l) }));
-
-  const renameLabel = (floorId, labelId, name) =>
-    updateFloor(floorId, (f) => ({ ...f, labels: (f.labels || []).map((l) => l.id === labelId ? { ...l, name } : l) }));
 
   // ── Employee ops ──
   const addEmployee = (name, department, email) => {
@@ -226,15 +204,6 @@ function SeatingApp() {
     return <LoginPage onLocalLogin={() => setLocalAuth(true)} />;
   }
 
-  if (authState === null) {
-    return (
-      <div className="app-loading">
-        <div className="app-loading-spinner" />
-        <span>Loading…</span>
-      </div>
-    );
-  }
-
   if (!ready) {
     return (
       <div className="app-loading">
@@ -258,7 +227,7 @@ function SeatingApp() {
           </span>
           <button
             className="logout-btn"
-            onClick={() => { if (authState?.isAuthenticated) oktaAuth.signOut({ postLogoutRedirectUri: window.location.origin }); else setLocalAuth(false); }}
+            onClick={() => { if (session) supabase.auth.signOut(); else setLocalAuth(false); }}
           >
             Sign out
           </button>
@@ -302,10 +271,6 @@ function SeatingApp() {
             onRotateDesk={rotateDesk}
             onResizeDesk={resizeDesk}
             onRenameDesk={renameDesk}
-            onAddLabel={addLabel}
-            onRemoveLabel={removeLabel}
-            onMoveLabel={moveLabel}
-            onRenameLabel={renameLabel}
             floorImages={floorImages}
           />
         ) : activeTab === "tickets" && canAssign ? (
@@ -323,8 +288,6 @@ function SeatingApp() {
             stats={{ occupied: assignedIds.size, available: totalSeats - assignedIds.size, desks: totalDesks }}
             onAddDesk={addDesk}
             onRemoveDesk={removeDesk}
-            onAddLabel={addLabel}
-            onRemoveLabel={removeLabel}
             floorImages={floorImages}
             onSetFloorImage={setFloorImage}
             onClearFloorImage={clearFloorImage}
