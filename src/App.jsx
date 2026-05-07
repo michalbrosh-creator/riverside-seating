@@ -247,9 +247,6 @@ function SeatingApp() {
       <header className="app-header">
         <h1>Riverside Seating</h1>
         <div className="user-switcher">
-          <button className="facilities-ticket-btn" onClick={() => setTicketModalOpen(true)}>
-            Facilities Ticket
-          </button>
           <span className="user-label">
             {userName}
             {canAssign && <span className="admin-indicator">Admin</span>}
@@ -305,6 +302,7 @@ function SeatingApp() {
             onMoveLabel={moveLabel}
             onRenameLabel={renameLabel}
             floorImages={floorImages}
+            onOpenTicket={() => setTicketModalOpen(true)}
           />
         ) : activeTab === "tickets" && canAssign ? (
           <FacilitiesTicketsAdmin userEmail={userEmail} />

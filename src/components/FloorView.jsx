@@ -337,7 +337,7 @@ export default function FloorView({
   floors, activeFloorId, employees, assignedIds, canAssign,
   onSelectFloor, onAssign, onUnassign, onToggleSeatDisabled, onMoveDesk, onRotateDesk, onResizeDesk, onRenameDesk,
   onAddLabel, onRemoveLabel, onMoveLabel, onRenameLabel,
-  floorImages,
+  floorImages, onOpenTicket,
 }) {
   const [selectedDesk, setSelectedDesk] = useState(null);
   const [highlightedDesk, setHighlightedDesk] = useState(null);
@@ -502,6 +502,11 @@ export default function FloorView({
           ))}
         </div>
         <EmployeeSearch employees={employees} floors={floors} onNavigate={handleNavigate} />
+        {onOpenTicket && (
+          <button className="facilities-ticket-btn" onClick={onOpenTicket}>
+            Facilities Ticket
+          </button>
+        )}
         <div className="zoom-controls">
           <button className="zoom-btn" onClick={() => changeZoom(-0.1)}>−</button>
           <span className="zoom-label">{Math.round(zoom * 100)}%</span>
