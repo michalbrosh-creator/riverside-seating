@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
+import { useOktaAuth } from "@okta/okta-react";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { useSupabaseState } from "./hooks/useSupabaseState";
 import { supabase } from "./lib/supabase";
 import { DESK_LABELS, DESK_SIZES, createDesk, createFloor } from "./data";
-import { getAllFloorImages, saveFloorImage, removeFloorImage } from "./lib/floorImageStore";
 import FloorView from "./components/FloorView";
 import AdminTab from "./components/AdminTab";
 import FacilitiesTicketModal from "./components/FacilitiesTicketModal";
@@ -11,23 +11,17 @@ import FacilitiesTicketsAdmin from "./components/FacilitiesTicketsAdmin";
 import LoginPage from "./pages/LoginPage";
 import "./App.css";
 
-const PERMANENT_ADMINS = ["michal.brosh@riverside.fm"];
+const PERMANENT_ADMINS = ["michal.brosh@riverside.fm", "michal.brosh@riverside.com"];
 
 const mapDesks = (floor, fn) => ({ ...floor, desks: floor.desks.map(fn) });
 const mapSeats = (desk, fn) => ({ ...desk, seats: desk.seats.map(fn) });
 
 function SeatingApp() {
-  const [session, setSession] = useState(null);
+  const { authState, oktaAuth } = useOktaAuth();
   const [localAuth, setLocalAuth] = useLocalStorage("seats_localAuth", false);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setSession(session));
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const isAuthed = !!session || localAuth;
-  const userEmail = session?.user?.email || "";
+  const isAuthed = authState?.isAuthenticated || localAuth;
+  const userEmail = authState?.idToken?.claims?.email || "";
   const userName = userEmail ? userEmail.split("@")[0] : (localAuth ? "Local Admin" : "");
 
   const [floors, setFloors, floorsReady] = useSupabaseState("seats_floors", [createFloor(1, "Floor 1")]);
@@ -38,23 +32,36 @@ function SeatingApp() {
   const [floorImages, setFloorImages] = useState({});
 
   useEffect(() => {
-    try {
-      const old = localStorage.getItem("seats_floorImages");
-      if (old) {
-        const parsed = JSON.parse(old);
-        Object.entries(parsed).forEach(([id, url]) => saveFloorImage(id, url));
-        localStorage.removeItem("seats_floorImages");
-      }
-    } catch {}
-    getAllFloorImages().then(setFloorImages);
+    if (!supabase) return;
+    supabase.storage.from("Floor Images").list().then(({ data: files }) => {
+      if (!files) return;
+      const images = {};
+      files.forEach((f) => {
+        const match = f.name.match(/^floor-(\w+)\./);
+        if (match) {
+          const { data } = supabase.storage.from("Floor Images").getPublicUrl(f.name);
+          images[match[1]] = data.publicUrl;
+        }
+      });
+      setFloorImages(images);
+    });
   }, []);
 
-  const setFloorImage = (floorId, dataUrl) => {
-    saveFloorImage(floorId, dataUrl);
-    setFloorImages((prev) => ({ ...prev, [String(floorId)]: dataUrl }));
+  const setFloorImage = async (floorId, file) => {
+    if (!supabase) return;
+    const ext = file.name.split(".").pop();
+    const path = `floor-${floorId}.${ext}`;
+    const { error } = await supabase.storage.from("Floor Images").upload(path, file, { upsert: true });
+    if (error) { console.error("Image upload failed", error); return; }
+    const { data } = supabase.storage.from("Floor Images").getPublicUrl(path);
+    setFloorImages((prev) => ({ ...prev, [String(floorId)]: data.publicUrl }));
   };
-  const clearFloorImage = (floorId) => {
-    removeFloorImage(floorId);
+
+  const clearFloorImage = async (floorId) => {
+    if (!supabase) return;
+    const { data: files } = await supabase.storage.from("Floor Images").list();
+    const toDelete = (files || []).filter((f) => f.name.startsWith(`floor-${floorId}.`)).map((f) => f.name);
+    if (toDelete.length) await supabase.storage.from("Floor Images").remove(toDelete);
     setFloorImages((prev) => { const n = { ...prev }; delete n[String(floorId)]; return n; });
   };
 
@@ -131,6 +138,19 @@ function SeatingApp() {
       return { ...d, size: newSize, seats: newSeats };
     }));
 
+  // ── Label ops ──
+  const addLabel = (floorId) =>
+    updateFloor(floorId, (f) => ({ ...f, labels: [...(f.labels || []), { id: Date.now(), name: "Room", x: 120, y: 120 }] }));
+
+  const removeLabel = (floorId, labelId) =>
+    updateFloor(floorId, (f) => ({ ...f, labels: (f.labels || []).filter((l) => l.id !== labelId) }));
+
+  const moveLabel = (floorId, labelId, x, y) =>
+    updateFloor(floorId, (f) => ({ ...f, labels: (f.labels || []).map((l) => l.id === labelId ? { ...l, x, y } : l) }));
+
+  const renameLabel = (floorId, labelId, name) =>
+    updateFloor(floorId, (f) => ({ ...f, labels: (f.labels || []).map((l) => l.id === labelId ? { ...l, name } : l) }));
+
   // ── Employee ops ──
   const addEmployee = (name, department, email) => {
     setEmployees((prev) => [...prev, { id: Date.now(), name, department, email: email || "", isAdmin: false }]);
@@ -201,7 +221,16 @@ function SeatingApp() {
   const totalDesks = floors.reduce((a, f) => a + (f.desks || []).length, 0);
 
   if (!isAuthed) {
-    return <LoginPage onLocalLogin={() => setLocalAuth(true)} />;
+    return <LoginPage />;
+  }
+
+  if (authState === null) {
+    return (
+      <div className="app-loading">
+        <div className="app-loading-spinner" />
+        <span>Loading…</span>
+      </div>
+    );
   }
 
   if (!ready) {
@@ -227,7 +256,7 @@ function SeatingApp() {
           </span>
           <button
             className="logout-btn"
-            onClick={() => { if (session) supabase.auth.signOut(); else setLocalAuth(false); }}
+            onClick={() => { if (authState?.isAuthenticated) oktaAuth.signOut({ postLogoutRedirectUri: window.location.origin }); else setLocalAuth(false); }}
           >
             Sign out
           </button>
@@ -271,6 +300,10 @@ function SeatingApp() {
             onRotateDesk={rotateDesk}
             onResizeDesk={resizeDesk}
             onRenameDesk={renameDesk}
+            onAddLabel={addLabel}
+            onRemoveLabel={removeLabel}
+            onMoveLabel={moveLabel}
+            onRenameLabel={renameLabel}
             floorImages={floorImages}
           />
         ) : activeTab === "tickets" && canAssign ? (
@@ -288,6 +321,8 @@ function SeatingApp() {
             stats={{ occupied: assignedIds.size, available: totalSeats - assignedIds.size, desks: totalDesks }}
             onAddDesk={addDesk}
             onRemoveDesk={removeDesk}
+            onAddLabel={addLabel}
+            onRemoveLabel={removeLabel}
             floorImages={floorImages}
             onSetFloorImage={setFloorImage}
             onClearFloorImage={clearFloorImage}
