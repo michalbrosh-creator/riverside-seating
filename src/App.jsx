@@ -28,6 +28,7 @@ function SeatingApp() {
   const [employees, setEmployees, employeesReady] = useSupabaseState("seats_employees", []);
   // Per-user prefs stay in localStorage
   const [activeTab, setActiveTab] = useLocalStorage("seats_activeTab", "floor");
+  const [ticketModalOpen, setTicketModalOpen] = useState(false);
   const [activeFloorId, setActiveFloorId] = useLocalStorage("seats_activeFloorId", 1);
   const [ticketModalOpen, setTicketModalOpen] = useState(false);
   const [floorImages, setFloorImages] = useState({});

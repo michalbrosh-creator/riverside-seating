@@ -314,6 +314,12 @@ body {
 }
 .floor-label:hover .floor-label-remove { opacity: 1; }
 .floor-label-remove:hover { color: #ef4444; }
+@keyframes label-pulse {
+  0%   { box-shadow: 0 0 0 3px rgba(251,146,60,1),  0 0 20px rgba(251,146,60,0.8); background: rgba(255,237,213,0.95); border-color: #f97316; }
+  50%  { box-shadow: 0 0 0 10px rgba(251,146,60,0.2), 0 0 30px rgba(251,146,60,0.3); background: rgba(255,255,255,0.9); border-color: #94a3b8; }
+  100% { box-shadow: 0 0 0 3px rgba(251,146,60,1),  0 0 20px rgba(251,146,60,0.8); background: rgba(255,237,213,0.95); border-color: #f97316; }
+}
+.floor-label-highlighted { animation: label-pulse 0.6s ease-in-out 5; }
 .room-avatar { background: #e0f2fe; color: #0369a1; font-size: 0.9rem; }
 
 .floor-bg-image {
@@ -715,3 +721,157 @@ body {
 .padded { padding: 16px 20px; }
 .emp-name { font-weight: 600; font-size: 0.875rem; }
 .emp-dept { font-size: 0.75rem; color: #94a3b8; }
+
+/* ── FACILITIES TICKET BUTTON (header) ── */
+.facilities-ticket-btn {
+  padding: 5px 14px;
+  background: rgba(251, 146, 60, 0.12);
+  color: #fb923c;
+  border: 1px solid rgba(251, 146, 60, 0.35);
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.facilities-ticket-btn:hover {
+  background: rgba(251, 146, 60, 0.22);
+  border-color: rgba(251, 146, 60, 0.6);
+  color: #fdba74;
+}
+
+/* ── TICKET MODAL ── */
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.modal-card {
+  background: white; border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  width: 100%; max-width: 460px;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 22px 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.modal-header h2 { font-size: 1rem; font-weight: 700; color: #0f172a; letter-spacing: -0.01em; }
+.modal-close {
+  background: none; border: none; cursor: pointer;
+  color: #94a3b8; font-size: 0.875rem; padding: 4px 6px;
+  border-radius: 5px; line-height: 1; transition: all 0.15s;
+}
+.modal-close:hover { background: #f1f5f9; color: #475569; }
+
+.modal-body { padding: 20px 22px; display: flex; flex-direction: column; gap: 14px; }
+.modal-label {
+  font-size: 0.8125rem; font-weight: 600; color: #374151;
+  display: block; margin-bottom: -6px;
+}
+
+.severity-options { display: flex; gap: 8px; }
+.severity-btn {
+  flex: 1; padding: 7px 0; border: 1.5px solid #e2e8f0;
+  border-radius: 8px; background: white; cursor: pointer;
+  font-size: 0.8125rem; font-weight: 600; color: #64748b;
+  transition: all 0.15s; text-align: center;
+}
+.severity-btn:hover { border-color: #94a3b8; color: #1e293b; }
+.severity-btn.active { font-weight: 700; }
+
+.modal-textarea {
+  width: 100%; padding: 10px 12px;
+  border: 1.5px solid #e2e8f0; border-radius: 8px;
+  font-size: 0.875rem; font-family: inherit; color: #1e293b;
+  resize: vertical; outline: none; line-height: 1.6;
+  transition: border-color 0.15s;
+}
+.modal-textarea:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.08); }
+.modal-textarea::placeholder { color: #94a3b8; }
+
+.modal-error {
+  font-size: 0.8125rem; color: #dc2626;
+  padding: 8px 12px; background: #fef2f2;
+  border-radius: 6px; border: 1px solid #fca5a5;
+}
+.modal-footer {
+  display: flex; justify-content: flex-end; gap: 10px;
+  padding: 16px 22px; border-top: 1px solid #f1f5f9;
+  background: #fafafa;
+}
+
+.modal-success {
+  padding: 40px 22px; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+}
+.modal-success-icon {
+  width: 48px; height: 48px; border-radius: 50%;
+  background: #dcfce7; color: #15803d;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.25rem; font-weight: 700;
+}
+.modal-success p { font-size: 0.9375rem; color: #1e293b; font-weight: 500; }
+
+/* ── TICKET LIST (admin) ── */
+.ticket-filters {
+  display: flex; gap: 2px;
+  padding: 12px 20px; border-bottom: 1px solid #f1f5f9;
+  background: #fafafa;
+}
+.ticket-filter-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border: 1px solid transparent;
+  border-radius: 6px; background: none; cursor: pointer;
+  font-size: 0.8125rem; font-weight: 500; color: #64748b;
+  transition: all 0.15s;
+}
+.ticket-filter-btn:hover { background: #f1f5f9; color: #1e293b; }
+.ticket-filter-btn.active { background: white; border-color: #e2e8f0; color: #1a1a2e; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.ticket-filter-count {
+  background: #f1f5f9; color: #64748b;
+  font-size: 0.6875rem; font-weight: 700;
+  padding: 1px 6px; border-radius: 10px; min-width: 20px; text-align: center;
+}
+.ticket-filter-btn.active .ticket-filter-count { background: #e0e7ff; color: #4338ca; }
+
+.ticket-list { display: flex; flex-direction: column; }
+
+.ticket-card {
+  padding: 16px 20px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex; flex-direction: column; gap: 8px;
+  transition: background 0.1s;
+}
+.ticket-card:last-child { border-bottom: none; }
+.ticket-card:hover { background: #fafafa; }
+.ticket-card.done { opacity: 0.6; }
+
+.ticket-card-top {
+  display: flex; align-items: center; gap: 10px;
+}
+.ticket-card-actions { margin-left: auto; flex-shrink: 0; }
+
+.sev-badge {
+  display: inline-block; padding: 2px 9px;
+  border-radius: 10px; font-size: 0.6875rem; font-weight: 700;
+  letter-spacing: 0.02em; flex-shrink: 0;
+}
+.ticket-date { font-size: 0.75rem; color: #94a3b8; flex-shrink: 0; }
+
+.ticket-description {
+  font-size: 0.875rem; color: #1e293b; line-height: 1.55;
+  margin: 0; white-space: pre-wrap; word-break: break-word;
+}
+
+.ticket-meta {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  font-size: 0.75rem;
+}
+.ticket-submitter { color: #475569; font-weight: 500; }
+.ticket-email { color: #94a3b8; font-weight: 400; }
+.ticket-resolved { color: #15803d; font-style: italic; flex-shrink: 0; }
