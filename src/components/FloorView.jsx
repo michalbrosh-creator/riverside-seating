@@ -504,7 +504,7 @@ export default function FloorView({
         <EmployeeSearch employees={employees} floors={floors} onNavigate={handleNavigate} />
         {onOpenTicket && (
           <button className="facilities-ticket-btn" onClick={onOpenTicket}>
-            Facilities Ticket
+            Open Facilities Ticket
           </button>
         )}
         <div className="zoom-controls">
