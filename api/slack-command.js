@@ -1,6 +1,12 @@
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
 
+// Disable Vercel's automatic body parsing so we can read the raw body
+// (needed for Slack signature verification)
+export const config = {
+  api: { bodyParser: false },
+};
+
 function getRawBody(req) {
   return new Promise((resolve, reject) => {
     let body = "";
