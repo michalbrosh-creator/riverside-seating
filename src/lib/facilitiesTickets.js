@@ -12,6 +12,7 @@ const lsRead = () => JSON.parse(localStorage.getItem(LS_KEY) || "[]");
 const lsWrite = (t) => localStorage.setItem(LS_KEY, JSON.stringify(t));
 
 async function notifySlack(ticket) {
+  console.log("[notify] calling /api/notify with", ticket);
   await fetch("/api/notify", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -34,6 +35,7 @@ export async function createTicket({ description, severity, type = "facilities",
     created_by_name: createdByName,
   };
 
+  console.log("[createTicket] supabase available:", !!supabase);
   if (!supabase) {
     const ticket = { ...payload, id: Date.now(), created_at: new Date().toISOString() };
     lsWrite([...lsRead(), ticket]);
@@ -47,6 +49,7 @@ export async function createTicket({ description, severity, type = "facilities",
     .select()
     .single();
 
+  console.log("[createTicket] insert result:", { data, error });
   await notifySlack(payload);
   return { data, error };
 }
