@@ -47,7 +47,7 @@ export async function createTicket({ description, severity, type = "facilities",
     .select()
     .single();
 
-  if (data) await notifySlack(data);
+  await notifySlack(payload);
   return { data, error };
 }
 
