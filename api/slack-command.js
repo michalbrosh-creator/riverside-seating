@@ -22,6 +22,11 @@ function verifySlack(rawBody, headers) {
   return crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
 }
 
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
@@ -42,30 +47,21 @@ export default async function handler(req, res) {
     });
   }
 
-  const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
+  // Respond to Slack immediately (3-second limit)
+  res.json({
+    response_type: "ephemeral",
+    text: `Got it! Ticket submitted ✓ _"${text.trim()}"_`,
+  });
 
-  const { error } = await supabase.from("facilities_tickets").insert([{
+  // Insert after responding — Vercel keeps the function alive until timeout
+  await supabase.from("facilities_tickets").insert([{
     description: text.trim(),
     severity: "medium",
     type: "facilities",
     status: "open",
     created_by_name: userName,
     created_by_email: `${userId}@slack`,
-  }]);
-
-  if (error) {
-    console.error("Supabase insert error", error);
-    return res.json({
-      response_type: "ephemeral",
-      text: "Something went wrong submitting your ticket. Please try again.",
-    });
-  }
-
-  return res.json({
-    response_type: "ephemeral",
-    text: `Ticket submitted! ✓ _"${text.trim()}"_\nTrack it at https://riverside-seating.vercel.app`,
+  }]).then(({ error }) => {
+    if (error) console.error("Supabase insert error", error);
   });
 }
