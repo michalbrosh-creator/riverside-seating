@@ -36,20 +36,12 @@ export default async function handler(req, res) {
   const userId = params.get("user_id") || "";
 
   if (!text.trim()) {
-    res.json({
+    return res.json({
       response_type: "ephemeral",
       text: "Please include a description. Example: `/officeask broken AC in the office`",
     });
-    return;
   }
 
-  // Respond to Slack immediately (must be within 3 seconds)
-  res.json({
-    response_type: "ephemeral",
-    text: `Ticket submitted! ✓ _"${text.trim()}"_\nTrack it at https://riverside-seating.vercel.app`,
-  });
-
-  // Write to Supabase after responding
   const supabase = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -64,5 +56,16 @@ export default async function handler(req, res) {
     created_by_email: `${userId}@slack`,
   }]);
 
-  if (error) console.error("Supabase insert error", error);
+  if (error) {
+    console.error("Supabase insert error", error);
+    return res.json({
+      response_type: "ephemeral",
+      text: "Something went wrong submitting your ticket. Please try again.",
+    });
+  }
+
+  return res.json({
+    response_type: "ephemeral",
+    text: `Ticket submitted! ✓ _"${text.trim()}"_\nTrack it at https://riverside-seating.vercel.app`,
+  });
 }
