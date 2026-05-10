@@ -95,6 +95,14 @@ export async function reopenTicket(id) {
     .eq("id", id);
 }
 
+export async function deleteTicket(id) {
+  if (!supabase) {
+    lsWrite(lsRead().filter((t) => t.id !== id));
+    return { error: null };
+  }
+  return supabase.from("facilities_tickets").delete().eq("id", id);
+}
+
 export function subscribeToTickets(callback) {
   if (!supabase) return () => {};
   const channel = supabase

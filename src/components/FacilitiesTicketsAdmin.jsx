@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getTickets, markTicketDone, reopenTicket, subscribeToTickets, SEVERITIES } from "../lib/facilitiesTickets";
+import { getTickets, markTicketDone, reopenTicket, deleteTicket, subscribeToTickets, SEVERITIES } from "../lib/facilitiesTickets";
 
 const SEV_ORDER = { urgent: 0, high: 1, medium: 2, low: 3 };
 
@@ -58,6 +58,7 @@ export default function FacilitiesTicketsAdmin({ userEmail }) {
 
   const handleDone = async (id) => { await markTicketDone(id, userEmail); load(); };
   const handleReopen = async (id) => { await reopenTicket(id); load(); };
+  const handleDelete = async (id) => { if (window.confirm("Delete this ticket?")) { await deleteTicket(id); load(); } };
 
   return (
     <div className="admin-tab">
@@ -111,6 +112,7 @@ export default function FacilitiesTicketsAdmin({ userEmail }) {
                     ) : (
                       <button className="btn-secondary sm" onClick={() => handleReopen(ticket.id)}>Reopen</button>
                     )}
+                    <button className="btn-danger sm" onClick={() => handleDelete(ticket.id)}>Delete</button>
                   </div>
                 </div>
                 <p className="ticket-description">{ticket.description}</p>
