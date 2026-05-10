@@ -7,6 +7,8 @@ const supabase = createClient(
 
 const OFFICE_MANAGER_ID = "U0A27EZ75QS";
 
+const AUTO_REPLY = "Thanks for your request! 🙌\nThe facilities team has received it and will take a look.";
+
 async function notifySlack(ticket) {
   const webhook = process.env.VITE_SLACK_WEBHOOK_URL;
   if (!webhook) return;
@@ -16,6 +18,16 @@ async function notifySlack(ticket) {
     body: JSON.stringify({
       text: `<@${OFFICE_MANAGER_ID}> New Facilities ticket from ${ticket.created_by_name}: ${ticket.description}`,
     }),
+  }).catch(() => {});
+}
+
+async function sendDM(slackUserId, text) {
+  const token = process.env.SLACK_BOT_TOKEN;
+  if (!token || !slackUserId) return;
+  await fetch("https://slack.com/api/chat.postMessage", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ channel: slackUserId, text }),
   }).catch(() => {});
 }
 
@@ -51,6 +63,7 @@ export default async function handler(req, res) {
   }
 
   await notifySlack({ created_by_name: userName, description: text });
+  await sendDM(userId, AUTO_REPLY);
 
   return res.json({
     response_type: "ephemeral",

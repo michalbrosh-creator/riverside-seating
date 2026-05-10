@@ -18,6 +18,7 @@ async function notifySlack(ticket) {
     body: JSON.stringify({
       description: ticket.description,
       createdByName: ticket.created_by_name || ticket.created_by_email,
+      createdByEmail: ticket.created_by_email,
       type: ticket.type,
       severity: ticket.severity,
     }),
