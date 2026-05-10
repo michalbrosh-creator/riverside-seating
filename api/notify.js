@@ -15,13 +15,18 @@ export default async function handler(req, res) {
   const typeLabel = type === "hibob" ? "HiBob" : "Facilities";
   const sevLabel = severity ? ` [${severity}]` : "";
 
-  await fetch(webhook, {
+  const slackRes = await fetch(webhook, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       text: `<@${OFFICE_MANAGER_ID}> New ${typeLabel} ticket${sevLabel} from ${createdByName || "someone"}: ${description}`,
     }),
-  }).catch(() => {});
+  }).catch((e) => { console.error("Slack fetch error:", e); return null; });
+
+  if (slackRes) {
+    const text = await slackRes.text();
+    console.log("Slack response:", slackRes.status, text);
+  }
 
   return res.status(200).end();
 }
