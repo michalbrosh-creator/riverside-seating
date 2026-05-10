@@ -1,8 +1,5 @@
 import { supabase } from "./supabase";
 
-// Add VITE_SLACK_WEBHOOK_URL to .env to enable Slack notifications
-const SLACK_WEBHOOK = import.meta.env.VITE_SLACK_WEBHOOK_URL;
-
 export const SEVERITIES = [
   { value: "low",    label: "Low",    bg: "#dcfce7", color: "#15803d" },
   { value: "medium", label: "Medium", bg: "#fef9c3", color: "#a16207" },
@@ -14,18 +11,15 @@ const LS_KEY = "facilities_tickets";
 const lsRead = () => JSON.parse(localStorage.getItem(LS_KEY) || "[]");
 const lsWrite = (t) => localStorage.setItem(LS_KEY, JSON.stringify(t));
 
-const OFFICE_MANAGER_ID = "U0A27EZ75QS";
-
 async function notifySlack(ticket) {
-  if (!SLACK_WEBHOOK) return;
-  const sev = SEVERITIES.find((s) => s.value === ticket.severity);
-  const typeLabel = ticket.type === "hibob" ? "HiBob" : "Facilities";
-  const sevText = sev ? ` [${sev.label}]` : "";
-  await fetch(SLACK_WEBHOOK, {
+  await fetch("/api/notify", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      text: `<@${OFFICE_MANAGER_ID}> New ${typeLabel} ticket${sevText} from ${ticket.created_by_name || ticket.created_by_email}: ${ticket.description}`,
+      description: ticket.description,
+      createdByName: ticket.created_by_name || ticket.created_by_email,
+      type: ticket.type,
+      severity: ticket.severity,
     }),
   }).catch(() => {});
 }
