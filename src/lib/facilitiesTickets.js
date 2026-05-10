@@ -14,14 +14,18 @@ const LS_KEY = "facilities_tickets";
 const lsRead = () => JSON.parse(localStorage.getItem(LS_KEY) || "[]");
 const lsWrite = (t) => localStorage.setItem(LS_KEY, JSON.stringify(t));
 
+const OFFICE_MANAGER_ID = "U0A27EZ75QS";
+
 async function notifySlack(ticket) {
   if (!SLACK_WEBHOOK) return;
   const sev = SEVERITIES.find((s) => s.value === ticket.severity);
+  const typeLabel = ticket.type === "hibob" ? "HiBob" : "Facilities";
+  const sevText = sev ? ` [${sev.label}]` : "";
   await fetch(SLACK_WEBHOOK, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      text: `New facilities ticket [${sev?.label}] from ${ticket.created_by_name}: ${ticket.description}`,
+      text: `<@${OFFICE_MANAGER_ID}> New ${typeLabel} ticket${sevText} from ${ticket.created_by_name || ticket.created_by_email}: ${ticket.description}`,
     }),
   }).catch(() => {});
 }

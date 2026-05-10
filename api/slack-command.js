@@ -5,6 +5,20 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+const OFFICE_MANAGER_ID = "U0A27EZ75QS";
+
+async function notifySlack(ticket) {
+  const webhook = process.env.VITE_SLACK_WEBHOOK_URL;
+  if (!webhook) return;
+  await fetch(webhook, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      text: `<@${OFFICE_MANAGER_ID}> New Facilities ticket from ${ticket.created_by_name}: ${ticket.description}`,
+    }),
+  }).catch(() => {});
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
@@ -35,6 +49,8 @@ export default async function handler(req, res) {
       text: "Something went wrong. Please try again.",
     });
   }
+
+  await notifySlack({ created_by_name: userName, description: text });
 
   return res.json({
     response_type: "ephemeral",
