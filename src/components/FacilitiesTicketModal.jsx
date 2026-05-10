@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { createTicket, SEVERITIES } from "../lib/facilitiesTickets";
 
-export default function FacilitiesTicketModal({ userEmail, userName, onClose }) {
+export default function FacilitiesTicketModal({ userEmail, userName, onClose, type = "facilities", title = "Facilities Ticket" }) {
+  const showSeverity = type === "facilities";
   const [severity, setSeverity] = useState("medium");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
@@ -14,7 +15,8 @@ export default function FacilitiesTicketModal({ userEmail, userName, onClose }) 
     setError("");
     const { error: err } = await createTicket({
       description,
-      severity,
+      severity: showSeverity ? severity : null,
+      type,
       createdByEmail: userEmail,
       createdByName: userName,
     });
@@ -36,7 +38,7 @@ export default function FacilitiesTicketModal({ userEmail, userName, onClose }) 
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()} onKeyDown={handleKeyDown}>
       <div className="modal-card">
         <div className="modal-header">
-          <h2>Facilities Ticket</h2>
+          <h2>{title}</h2>
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
 
@@ -48,24 +50,28 @@ export default function FacilitiesTicketModal({ userEmail, userName, onClose }) 
         ) : (
           <>
             <div className="modal-body">
-              <label className="modal-label">Severity</label>
-              <div className="severity-options">
-                {SEVERITIES.map((s) => (
-                  <button
-                    key={s.value}
-                    className={`severity-btn ${severity === s.value ? "active" : ""}`}
-                    style={severity === s.value ? { background: s.bg, color: s.color, borderColor: s.color } : {}}
-                    onClick={() => setSeverity(s.value)}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
+              {showSeverity && (
+                <>
+                  <label className="modal-label">Severity</label>
+                  <div className="severity-options">
+                    {SEVERITIES.map((s) => (
+                      <button
+                        key={s.value}
+                        className={`severity-btn ${severity === s.value ? "active" : ""}`}
+                        style={severity === s.value ? { background: s.bg, color: s.color, borderColor: s.color } : {}}
+                        onClick={() => setSeverity(s.value)}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
 
               <label className="modal-label">Description</label>
               <textarea
                 className="modal-textarea"
-                placeholder="Describe the issue or request…"
+                placeholder="Describe the request…"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
@@ -82,7 +88,7 @@ export default function FacilitiesTicketModal({ userEmail, userName, onClose }) 
                 onClick={handleSubmit}
                 disabled={!description.trim() || loading}
               >
-                {loading ? "Submitting…" : "Submit Ticket"}
+                {loading ? "Submitting…" : "Submit"}
               </button>
             </div>
           </>

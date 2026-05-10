@@ -26,10 +26,11 @@ async function notifySlack(ticket) {
   }).catch(() => {});
 }
 
-export async function createTicket({ description, severity, createdByEmail, createdByName }) {
+export async function createTicket({ description, severity, type = "facilities", createdByEmail, createdByName }) {
   const payload = {
     description: description.trim(),
-    severity,
+    severity: severity || null,
+    type,
     status: "open",
     created_by_email: createdByEmail,
     created_by_name: createdByName,

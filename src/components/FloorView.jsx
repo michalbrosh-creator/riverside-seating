@@ -337,7 +337,7 @@ export default function FloorView({
   floors, activeFloorId, employees, assignedIds, canAssign,
   onSelectFloor, onAssign, onUnassign, onToggleSeatDisabled, onMoveDesk, onRotateDesk, onResizeDesk, onRenameDesk,
   onAddLabel, onRemoveLabel, onMoveLabel, onRenameLabel,
-  floorImages, onOpenTicket,
+  floorImages, onOpenTicket, onOpenHibob,
 }) {
   const [selectedDesk, setSelectedDesk] = useState(null);
   const [highlightedDesk, setHighlightedDesk] = useState(null);
@@ -505,6 +505,11 @@ export default function FloorView({
         {onOpenTicket && (
           <button className="facilities-ticket-btn" onClick={onOpenTicket}>
             Open Facilities Ticket
+          </button>
+        )}
+        {onOpenHibob && (
+          <button className="hibob-ticket-btn" onClick={onOpenHibob}>
+            HiBob Ticket
           </button>
         )}
         <div className="zoom-controls">

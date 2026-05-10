@@ -29,6 +29,7 @@ function SeatingApp() {
   const [activeTab, setActiveTab] = useLocalStorage("seats_activeTab", "floor");
   const [activeFloorId, setActiveFloorId] = useLocalStorage("seats_activeFloorId", 1);
   const [ticketModalOpen, setTicketModalOpen] = useState(false);
+  const [hibobModalOpen, setHibobModalOpen] = useState(false);
   const [floorImages, setFloorImages] = useState({});
 
   useEffect(() => {
@@ -278,7 +279,18 @@ function SeatingApp() {
         <FacilitiesTicketModal
           userEmail={userEmail}
           userName={userName}
+          type="facilities"
+          title="Facilities Ticket"
           onClose={() => setTicketModalOpen(false)}
+        />
+      )}
+      {hibobModalOpen && (
+        <FacilitiesTicketModal
+          userEmail={userEmail}
+          userName={userName}
+          type="hibob"
+          title="HiBob Ticket"
+          onClose={() => setHibobModalOpen(false)}
         />
       )}
       <div className="app-body">
@@ -303,6 +315,7 @@ function SeatingApp() {
             onRenameLabel={renameLabel}
             floorImages={floorImages}
             onOpenTicket={() => setTicketModalOpen(true)}
+            onOpenHibob={() => setHibobModalOpen(true)}
           />
         ) : activeTab === "tickets" && canAssign ? (
           <FacilitiesTicketsAdmin userEmail={userEmail} />
