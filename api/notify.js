@@ -8,25 +8,19 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
   const webhook = process.env.VITE_SLACK_WEBHOOK_URL;
-  console.log("notify called, webhook present:", !!webhook, "body:", JSON.stringify(req.body));
   if (!webhook) return res.status(200).end();
 
   const { description, createdByName, type, severity } = req.body || {};
   const typeLabel = type === "hibob" ? "HiBob" : "Facilities";
   const sevLabel = severity ? ` [${severity}]` : "";
 
-  const slackRes = await fetch(webhook, {
+  await fetch(webhook, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       text: `<@${OFFICE_MANAGER_ID}> New ${typeLabel} ticket${sevLabel} from ${createdByName || "someone"}: ${description}`,
     }),
-  }).catch((e) => { console.error("Slack fetch error:", e); return null; });
-
-  if (slackRes) {
-    const text = await slackRes.text();
-    console.log("Slack response:", slackRes.status, text);
-  }
+  }).catch(() => {});
 
   return res.status(200).end();
 }
