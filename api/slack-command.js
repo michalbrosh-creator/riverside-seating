@@ -12,11 +12,10 @@ function getRawBody(req) {
 
 function verifySlack(rawBody, headers) {
   const secret = process.env.SLACK_SIGNING_SECRET;
-  if (!secret) return true; // skip verification if not configured
+  if (!secret) return true;
   const sig = headers["x-slack-signature"];
   const ts = headers["x-slack-request-timestamp"];
   if (!sig || !ts) return false;
-  // Reject requests older than 5 minutes
   if (Math.abs(Date.now() / 1000 - Number(ts)) > 300) return false;
   const base = `v0:${ts}:${rawBody}`;
   const expected = "v0=" + crypto.createHmac("sha256", secret).update(base).digest("hex");
@@ -37,12 +36,20 @@ export default async function handler(req, res) {
   const userId = params.get("user_id") || "";
 
   if (!text.trim()) {
-    return res.json({
+    res.json({
       response_type: "ephemeral",
       text: "Please include a description. Example: `/officeask broken AC in the office`",
     });
+    return;
   }
 
+  // Respond to Slack immediately (must be within 3 seconds)
+  res.json({
+    response_type: "ephemeral",
+    text: `Ticket submitted! ✓ _"${text.trim()}"_\nTrack it at https://riverside-seating.vercel.app`,
+  });
+
+  // Write to Supabase after responding
   const supabase = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -57,16 +64,5 @@ export default async function handler(req, res) {
     created_by_email: `${userId}@slack`,
   }]);
 
-  if (error) {
-    console.error("Supabase insert error", error);
-    return res.json({
-      response_type: "ephemeral",
-      text: "Something went wrong submitting your ticket. Please try again.",
-    });
-  }
-
-  return res.json({
-    response_type: "ephemeral",
-    text: `Ticket submitted! ✓ _"${text.trim()}"_\nYou can track it at https://riverside-seating.vercel.app`,
-  });
+  if (error) console.error("Supabase insert error", error);
 }
