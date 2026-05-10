@@ -19,19 +19,25 @@ export default async function handler(req, res) {
     });
   }
 
-  res.json({
-    response_type: "ephemeral",
-    text: `Got it! Ticket submitted ✓ _"${text}"_`,
-  });
-
-  await supabase.from("facilities_tickets").insert([{
+  const { error } = await supabase.from("facilities_tickets").insert([{
     description: text,
     severity: "medium",
     type: "facilities",
     status: "open",
     created_by_name: userName,
     created_by_email: `${userId}@slack`,
-  }]).then(({ error }) => {
-    if (error) console.error("Supabase insert error", error);
+  }]);
+
+  if (error) {
+    console.error("Supabase insert error", error);
+    return res.json({
+      response_type: "ephemeral",
+      text: "Something went wrong. Please try again.",
+    });
+  }
+
+  return res.json({
+    response_type: "ephemeral",
+    text: `Got it! Ticket submitted ✓ _"${text}"_`,
   });
 }
