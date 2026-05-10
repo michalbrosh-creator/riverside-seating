@@ -8,6 +8,7 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
   const webhook = process.env.VITE_SLACK_WEBHOOK_URL;
+  console.log("notify called, webhook present:", !!webhook, "body:", JSON.stringify(req.body));
   if (!webhook) return res.status(200).end();
 
   const { description, createdByName, type, severity } = req.body || {};
