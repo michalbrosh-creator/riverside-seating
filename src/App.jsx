@@ -245,7 +245,7 @@ function SeatingApp() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Riverside Operations</h1>
+        <h1>Riverside People Operations</h1>
         <div className="user-switcher">
           <span className="user-label">
             {userName}

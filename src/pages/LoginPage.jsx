@@ -7,7 +7,7 @@ export default function LoginPage() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <h1 className="login-title">Riverside Operations</h1>
+        <h1 className="login-title">Riverside People Operations</h1>
         <p className="login-subtitle">Sign in with your Riverside account</p>
         <button className="login-btn" onClick={() => oktaAuth.signInWithRedirect({ originalUri: "/" })}>
           Sign in with Okta
