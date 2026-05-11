@@ -690,6 +690,9 @@ body {
   display: flex; align-items: center; justify-content: center;
   font-weight: 700; font-size: 0.8125rem; flex-shrink: 0;
 }
+img.emp-avatar-photo {
+  object-fit: cover; background: #e2e8f0;
+}
 .emp-name-cell { font-weight: 600; color: #0f172a; }
 .emp-dept-cell { color: #64748b; }
 .no-value { color: #cbd5e1; }

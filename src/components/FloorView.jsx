@@ -1,6 +1,33 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 
-function EmployeePicker({ employees, assignedIds, position, onAssign, onUnassign, currentEmployeeId, onClose, seatLabel }) {
+const photoCache = {};
+
+function useSlackPhotos(employees) {
+  const [photos, setPhotos] = useState({});
+  useEffect(() => {
+    employees.forEach(async (emp) => {
+      if (!emp.email || photoCache[emp.email] !== undefined) return;
+      photoCache[emp.email] = null;
+      try {
+        const res = await fetch(`/api/slack-photo?email=${encodeURIComponent(emp.email)}`);
+        const { photoUrl } = await res.json();
+        photoCache[emp.email] = photoUrl || null;
+        if (photoUrl) setPhotos((prev) => ({ ...prev, [emp.email]: photoUrl }));
+      } catch {
+        photoCache[emp.email] = null;
+      }
+    });
+  }, [employees]);
+  return photos;
+}
+
+function EmpAvatar({ employee, photos, size = "sm" }) {
+  const photoUrl = employee?.email ? photos[employee.email] : null;
+  if (photoUrl) return <img className={`emp-avatar ${size} emp-avatar-photo`} src={photoUrl} alt={employee.name} />;
+  return <div className={`emp-avatar ${size}`}>{employee?.name?.[0] || "?"}</div>;
+}
+
+function EmployeePicker({ employees, assignedIds, position, onAssign, onUnassign, currentEmployeeId, onClose, seatLabel, photos = {} }) {
   const [search, setSearch] = useState("");
   const filtered = employees.filter((e) =>
     e.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -40,7 +67,7 @@ function EmployeePicker({ employees, assignedIds, position, onAssign, onUnassign
                 className={`picker-item ${isCurrent ? "current" : ""} ${isAssigned ? "taken" : ""}`}
                 onClick={() => { if (!isAssigned || isCurrent) { onAssign(emp.id); onClose(); } }}
               >
-                <div className="emp-avatar sm">{emp.name[0]}</div>
+                <EmpAvatar employee={emp} photos={photos} />
                 <div className="picker-emp-info">
                   <span className="emp-name">{emp.name}</span>
                   {emp.department && <span className="emp-dept">{emp.department}</span>}
@@ -183,7 +210,7 @@ function DeskBlock({ desk, empMap, floorId, canAssign, onSeatClick, onUnassign, 
   );
 }
 
-function EmployeeSearch({ employees, floors, onNavigate }) {
+function EmployeeSearch({ employees, floors, onNavigate, photos = {} }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
@@ -266,7 +293,7 @@ function EmployeeSearch({ employees, floors, onNavigate }) {
             const loc = locationMap[emp.id];
             return (
               <li key={emp.id} className="floor-search-item" onClick={() => handleSelect(emp)}>
-                <div className="emp-avatar sm">{emp.name[0]}</div>
+                <EmpAvatar employee={emp} photos={photos} />
                 <div className="floor-search-info">
                   <span className="emp-name">{emp.name}</span>
                   {emp.department && <span className="emp-dept">{emp.department}</span>}
@@ -348,6 +375,7 @@ export default function FloorView({
   const [labelDrag, setLabelDrag] = useState(null);
   const [isPanning, setIsPanning] = useState(false);
   const panStartRef = useRef(null);
+  const photos = useSlackPhotos(employees);
   const deskRefs = useRef({});
   const canvasScrollRef = useRef(null);
 
@@ -501,7 +529,7 @@ export default function FloorView({
             </button>
           ))}
         </div>
-        <EmployeeSearch employees={employees} floors={floors} onNavigate={handleNavigate} />
+        <EmployeeSearch employees={employees} floors={floors} onNavigate={handleNavigate} photos={photos} />
         {onOpenTicket && (
           <button className="facilities-ticket-btn" onClick={onOpenTicket}>
             Open Facilities Ticket
@@ -600,6 +628,7 @@ export default function FloorView({
           onAssign={(empId) => onAssign(empId, picker.seatId, picker.floorId)}
           onUnassign={() => onUnassign(picker.seatId)}
           onClose={() => setPicker(null)}
+          photos={photos}
         />
       )}
     </div>
