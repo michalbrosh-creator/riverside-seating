@@ -56,9 +56,9 @@ export default function FacilitiesTicketsAdmin({ userEmail }) {
   const openCount = byType.filter((t) => t.status === "open").length;
   const doneCount = byType.filter((t) => t.status === "done").length;
 
-  const handleDone = async (id) => { await markTicketDone(id, userEmail); load(); };
-  const handleReopen = async (id) => { await reopenTicket(id); load(); };
-  const handleDelete = async (id) => { if (window.confirm("Delete this ticket?")) { await deleteTicket(id); load(); } };
+  const handleDone = async (id, type) => { await markTicketDone(id, userEmail, type); load(); };
+  const handleReopen = async (id, type) => { await reopenTicket(id, type); load(); };
+  const handleDelete = async (id, type) => { if (window.confirm("Delete this ticket?")) { await deleteTicket(id, type); load(); } };
 
   return (
     <div className="admin-tab">
@@ -108,11 +108,11 @@ export default function FacilitiesTicketsAdmin({ userEmail }) {
                   <span className="ticket-date">{formatDate(ticket.created_at)}</span>
                   <div className="ticket-card-actions">
                     {ticket.status === "open" ? (
-                      <button className="btn-primary sm" onClick={() => handleDone(ticket.id)}>Mark Done</button>
+                      <button className="btn-primary sm" onClick={() => handleDone(ticket.id, ticket.type)}>Mark Done</button>
                     ) : (
-                      <button className="btn-secondary sm" onClick={() => handleReopen(ticket.id)}>Reopen</button>
+                      <button className="btn-secondary sm" onClick={() => handleReopen(ticket.id, ticket.type)}>Reopen</button>
                     )}
-                    <button className="btn-danger sm" onClick={() => handleDelete(ticket.id)}>Delete</button>
+                    <button className="btn-danger sm" onClick={() => handleDelete(ticket.id, ticket.type)}>Delete</button>
                   </div>
                 </div>
                 <p className="ticket-description">{ticket.description}</p>

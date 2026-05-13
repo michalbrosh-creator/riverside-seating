@@ -1,5 +1,6 @@
-const OFFICE_MANAGER_ID = "U0A27EZ75QS";
-const AUTO_REPLY = "Thanks for your request! 🙌\nThe facilities team has received it and will take a look.";
+const FACILITIES_MANAGER_ID = "U0A27EZ75QS"; // Bar Elharal
+const HIBOB_MANAGER_ID = "U0B2U18A6HW";      // Lilach Stencel
+const AUTO_REPLY = "Thanks for your request! 🙌\nThe team has received it and will take a look.";
 
 async function sendDM(slackUserId, text) {
   const token = process.env.SLACK_BOT_TOKEN;
@@ -30,21 +31,26 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
   const { description, createdByName, createdByEmail, type, severity } = req.body || {};
-  const typeLabel = type === "hibob" ? "HiBob" : "Facilities";
+  const isHibob = type === "hibob";
+
+  const webhook = isHibob
+    ? process.env.HIBOB_SLACK_WEBHOOK_URL
+    : process.env.VITE_SLACK_WEBHOOK_URL;
+
+  const managerId = isHibob ? HIBOB_MANAGER_ID : FACILITIES_MANAGER_ID;
+  const typeLabel = isHibob ? "HiBob" : "Facilities";
   const sevLabel = severity ? ` [${severity}]` : "";
 
-  const webhook = process.env.VITE_SLACK_WEBHOOK_URL;
   if (webhook) {
     await fetch(webhook, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        text: `<@${OFFICE_MANAGER_ID}> New ${typeLabel} ticket${sevLabel} from ${createdByName || "someone"}: ${description}`,
+        text: `<@${managerId}> New ${typeLabel} ticket${sevLabel} from ${createdByName || "someone"}: ${description}`,
       }),
     }).catch(() => {});
   }
 
-  // Send auto-reply DM to submitter
   if (createdByEmail) {
     const slackUserId = await lookupSlackUserByEmail(createdByEmail);
     if (slackUserId) await sendDM(slackUserId, AUTO_REPLY);

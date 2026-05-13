@@ -7,9 +7,8 @@ export const SEVERITIES = [
   { value: "urgent", label: "Urgent", bg: "#f3e8ff", color: "#7e22ce" },
 ];
 
-const LS_KEY = "facilities_tickets";
-const lsRead = () => JSON.parse(localStorage.getItem(LS_KEY) || "[]");
-const lsWrite = (t) => localStorage.setItem(LS_KEY, JSON.stringify(t));
+const lsRead = (key) => JSON.parse(localStorage.getItem(key) || "[]");
+const lsWrite = (key, t) => localStorage.setItem(key, JSON.stringify(t));
 
 async function notifySlack(ticket) {
   await fetch("/api/notify", {
@@ -26,87 +25,85 @@ async function notifySlack(ticket) {
 }
 
 export async function createTicket({ description, severity, type = "facilities", createdByEmail, createdByName }) {
+  const isHibob = type === "hibob";
+  const table = isHibob ? "hibob_tickets" : "facilities_tickets";
   const payload = {
     description: description.trim(),
-    severity: severity || null,
-    type,
     status: "open",
     created_by_email: createdByEmail,
     created_by_name: createdByName,
+    ...(!isHibob ? { severity: severity || null } : {}),
   };
 
   if (!supabase) {
-    const ticket = { ...payload, id: Date.now(), created_at: new Date().toISOString() };
-    lsWrite([...lsRead(), ticket]);
+    const ticket = { ...payload, type, id: Date.now(), created_at: new Date().toISOString() };
+    lsWrite(table, [...lsRead(table), ticket]);
     await notifySlack(ticket);
     return { data: ticket, error: null };
   }
 
-  const { data, error } = await supabase
-    .from("facilities_tickets")
-    .insert([payload])
-    .select()
-    .single();
-
-  await notifySlack(payload);
-  return { data, error };
+  const { data, error } = await supabase.from(table).insert([payload]).select().single();
+  await notifySlack({ ...payload, type });
+  return { data: data ? { ...data, type } : null, error };
 }
 
 export async function getTickets() {
   if (!supabase) {
-    return { data: lsRead(), error: null };
+    const facilities = lsRead("facilities_tickets").map((t) => ({ ...t, type: "facilities" }));
+    const hibob = lsRead("hibob_tickets").map((t) => ({ ...t, type: "hibob" }));
+    return {
+      data: [...facilities, ...hibob].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
+      error: null,
+    };
   }
-  return supabase
-    .from("facilities_tickets")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const [fRes, hRes] = await Promise.all([
+    supabase.from("facilities_tickets").select("*"),
+    supabase.from("hibob_tickets").select("*"),
+  ]);
+  const facilities = (fRes.data || []).map((t) => ({ ...t, type: "facilities" }));
+  const hibob = (hRes.data || []).map((t) => ({ ...t, type: "hibob" }));
+  return {
+    data: [...facilities, ...hibob].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
+    error: fRes.error || hRes.error,
+  };
 }
 
-export async function markTicketDone(id, resolvedByEmail) {
+export async function markTicketDone(id, resolvedByEmail, type = "facilities") {
+  const table = type === "hibob" ? "hibob_tickets" : "facilities_tickets";
+  const update = { status: "done", resolved_at: new Date().toISOString(), resolved_by: resolvedByEmail };
   if (!supabase) {
-    lsWrite(
-      lsRead().map((t) =>
-        t.id === id
-          ? { ...t, status: "done", resolved_at: new Date().toISOString(), resolved_by: resolvedByEmail }
-          : t
-      )
-    );
+    lsWrite(table, lsRead(table).map((t) => (t.id === id ? { ...t, ...update } : t)));
     return { error: null };
   }
-  return supabase
-    .from("facilities_tickets")
-    .update({ status: "done", resolved_at: new Date().toISOString(), resolved_by: resolvedByEmail })
-    .eq("id", id);
+  return supabase.from(table).update(update).eq("id", id);
 }
 
-export async function reopenTicket(id) {
+export async function reopenTicket(id, type = "facilities") {
+  const table = type === "hibob" ? "hibob_tickets" : "facilities_tickets";
+  const update = { status: "open", resolved_at: null, resolved_by: null };
   if (!supabase) {
-    lsWrite(
-      lsRead().map((t) =>
-        t.id === id ? { ...t, status: "open", resolved_at: null, resolved_by: null } : t
-      )
-    );
+    lsWrite(table, lsRead(table).map((t) => (t.id === id ? { ...t, ...update } : t)));
     return { error: null };
   }
-  return supabase
-    .from("facilities_tickets")
-    .update({ status: "open", resolved_at: null, resolved_by: null })
-    .eq("id", id);
+  return supabase.from(table).update(update).eq("id", id);
 }
 
-export async function deleteTicket(id) {
+export async function deleteTicket(id, type = "facilities") {
+  const table = type === "hibob" ? "hibob_tickets" : "facilities_tickets";
   if (!supabase) {
-    lsWrite(lsRead().filter((t) => t.id !== id));
+    lsWrite(table, lsRead(table).filter((t) => t.id !== id));
     return { error: null };
   }
-  return supabase.from("facilities_tickets").delete().eq("id", id);
+  return supabase.from(table).delete().eq("id", id);
 }
 
 export function subscribeToTickets(callback) {
   if (!supabase) return () => {};
-  const channel = supabase
-    .channel("facilities_tickets_changes")
+  const ch1 = supabase.channel("facilities_tickets_changes")
     .on("postgres_changes", { event: "*", schema: "public", table: "facilities_tickets" }, callback)
     .subscribe();
-  return () => supabase.removeChannel(channel);
+  const ch2 = supabase.channel("hibob_tickets_changes")
+    .on("postgres_changes", { event: "*", schema: "public", table: "hibob_tickets" }, callback)
+    .subscribe();
+  return () => { supabase.removeChannel(ch1); supabase.removeChannel(ch2); };
 }
