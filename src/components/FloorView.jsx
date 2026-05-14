@@ -31,7 +31,7 @@ function EmployeePicker({ employees, assignedIds, position, onAssign, onUnassign
   const [search, setSearch] = useState("");
   const filtered = employees.filter((e) =>
     e.name.toLowerCase().includes(search.toLowerCase()) ||
-    (e.department || "").toLowerCase().includes(search.toLowerCase())
+    false
   );
 
   return (
@@ -70,7 +70,6 @@ function EmployeePicker({ employees, assignedIds, position, onAssign, onUnassign
                 <EmpAvatar employee={emp} photos={photos} />
                 <div className="picker-emp-info">
                   <span className="emp-name">{emp.name}</span>
-                  {emp.department && <span className="emp-dept">{emp.department}</span>}
                 </div>
                 {isCurrent && <span className="picker-tag current-tag">Here</span>}
                 {isAssigned && <span className="picker-tag taken-tag">Seated</span>}
@@ -238,7 +237,7 @@ function EmployeeSearch({ employees, floors, onNavigate, photos = {} }) {
 
   const q = query.trim().toLowerCase();
   const empResults = q ? employees.filter((e) =>
-    e.name.toLowerCase().includes(q) || (e.department || "").toLowerCase().includes(q)
+    e.name.toLowerCase().includes(q)
   ).slice(0, 6) : [];
   const roomResults = q ? allRooms.filter((r) => r.name.toLowerCase().includes(q)).slice(0, 4) : [];
 
@@ -296,7 +295,6 @@ function EmployeeSearch({ employees, floors, onNavigate, photos = {} }) {
                 <EmpAvatar employee={emp} photos={photos} />
                 <div className="floor-search-info">
                   <span className="emp-name">{emp.name}</span>
-                  {emp.department && <span className="emp-dept">{emp.department}</span>}
                 </div>
                 {loc ? (
                   <span className="floor-search-location">

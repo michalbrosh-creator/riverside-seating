@@ -39,7 +39,7 @@ function EmployeeTable({ employees, onRemove, onToggleAdmin }) {
   const filtered = employees.filter(
     (e) =>
       e.name.toLowerCase().includes(search.toLowerCase()) ||
-      (e.department || "").toLowerCase().includes(search.toLowerCase())
+      false
   );
   return (
     <div className="emp-table-wrapper">
@@ -55,7 +55,7 @@ function EmployeeTable({ employees, onRemove, onToggleAdmin }) {
       ) : (
         <table className="emp-table">
           <thead>
-            <tr><th></th><th>Name</th><th>Department</th><th>Admin</th><th></th></tr>
+            <tr><th></th><th>Name</th><th>Admin</th><th></th></tr>
           </thead>
           <tbody>
             {filtered.map((emp) => (
@@ -65,7 +65,6 @@ function EmployeeTable({ employees, onRemove, onToggleAdmin }) {
                   {emp.name}
                   {emp.isAdmin && <span className="admin-badge">Admin</span>}
                 </td>
-                <td className="emp-dept-cell">{emp.department || <span className="no-value">—</span>}</td>
                 <td>
                   <label className="toggle" title={emp.isAdmin ? "Revoke admin" : "Grant admin"}>
                     <input type="checkbox" checked={!!emp.isAdmin} onChange={() => onToggleAdmin(emp.id)} />
@@ -91,7 +90,6 @@ export default function AdminTab({
 }) {
   const [selectedSize, setSelectedSize] = useState(4);
   const [empName, setEmpName] = useState("");
-  const [empDept, setEmpDept] = useState("");
   const [empEmail, setEmpEmail] = useState("");
   const [editingFloorId, setEditingFloorId] = useState(null);
   const [editingFloorName, setEditingFloorName] = useState("");
@@ -119,8 +117,8 @@ export default function AdminTab({
 
   const handleAddEmployee = () => {
     if (!empName.trim()) return;
-    onAddEmployee(empName.trim(), empDept.trim(), empEmail.trim());
-    setEmpName(""); setEmpDept(""); setEmpEmail("");
+    onAddEmployee(empName.trim(), "", empEmail.trim());
+    setEmpName(""); setEmpEmail("");
   };
 
   const startFloorRename = (floor) => { setEditingFloorId(floor.id); setEditingFloorName(floor.name); };
@@ -254,8 +252,6 @@ export default function AdminTab({
         <div className="emp-add-panel">
           <input className="emp-input" type="text" placeholder="Full name" value={empName}
             onChange={(e) => setEmpName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddEmployee()} />
-          <input className="emp-input" type="text" placeholder="Department" value={empDept}
-            onChange={(e) => setEmpDept(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddEmployee()} />
           <input className="emp-input" type="email" placeholder="Email (for SSO login)" value={empEmail}
             onChange={(e) => setEmpEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddEmployee()} />
           <button className="btn-primary" onClick={handleAddEmployee} disabled={!empName.trim()}>Add Employee</button>
