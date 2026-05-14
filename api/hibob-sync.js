@@ -9,6 +9,7 @@ export default async function handler(req, res) {
   if (!userId || !token) return res.status(500).json({ error: "HiBob credentials not configured" });
 
   const auth = Buffer.from(`${userId}:${token}`).toString("base64");
+  console.log("HiBob userId:", userId, "token length:", token.length, "auth header:", `Basic ${auth}`.slice(0, 20) + "...");
 
   const hibobRes = await fetch("https://api.hibob.com/v1/people", {
     headers: {
