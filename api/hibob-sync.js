@@ -17,13 +17,14 @@ export default async function handler(req, res) {
     },
   }).catch(() => null);
 
-  if (!hibobRes || !hibobRes.ok) {
-    const text = await hibobRes?.text().catch(() => "");
-    console.error("HiBob API error:", hibobRes?.status, text);
-    return res.status(500).json({ error: "Failed to fetch from HiBob" });
+  const text = await hibobRes.text().catch(() => "");
+  console.log("HiBob status:", hibobRes.status, "body start:", text.slice(0, 200));
+
+  if (!hibobRes.ok || text.trim().startsWith("<")) {
+    return res.status(500).json({ error: `HiBob error ${hibobRes.status}: ${text.slice(0, 100)}` });
   }
 
-  const data = await hibobRes.json();
+  const data = JSON.parse(text);
   const employees = (data.employees || [])
     .filter((e) => e.email)
     .map((e) => ({
