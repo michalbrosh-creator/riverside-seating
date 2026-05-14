@@ -1,5 +1,20 @@
 import { useState, useRef } from "react";
 
+function HibobSyncButton({ onSync }) {
+  const [status, setStatus] = useState("idle");
+  const handleClick = async () => {
+    setStatus("loading");
+    const result = await onSync();
+    setStatus(result?.error ? "error" : "done");
+    setTimeout(() => setStatus("idle"), 3000);
+  };
+  return (
+    <button className="btn-secondary" onClick={handleClick} disabled={status === "loading"}>
+      {status === "loading" ? "Syncing…" : status === "done" ? "✓ Synced" : status === "error" ? "Sync failed" : "↻ Sync HiBob"}
+    </button>
+  );
+}
+
 function parseCSV(text) {
   const lines = text.trim().split(/\r?\n/);
   const header = lines[0].toLowerCase().split(",").map((h) => h.trim());
@@ -71,7 +86,7 @@ export default function AdminTab({
   floors, activeFloorId, employees, deskSizes, stats,
   onSelectFloor, onAddFloor, onRenameFloor, onRemoveFloor,
   onAddDesk, onRemoveDesk, onAddLabel, onRemoveLabel,
-  onAddEmployee, onRemoveEmployee, onToggleAdmin, onImportEmployees,
+  onAddEmployee, onRemoveEmployee, onToggleAdmin, onImportEmployees, onSyncHibob,
   floorImages, onSetFloorImage, onClearFloorImage,
 }) {
   const [selectedSize, setSelectedSize] = useState(4);
@@ -230,6 +245,7 @@ export default function AdminTab({
             <span className="section-meta">{employees.length} total</span>
           </div>
           <div className="header-actions">
+            {onSyncHibob && <HibobSyncButton onSync={onSyncHibob} />}
             <button className="btn-secondary" onClick={() => fileInputRef.current.click()}>↑ Import CSV</button>
             <input ref={fileInputRef} type="file" accept=".csv,.txt" style={{ display: "none" }} onChange={handleFileImport} />
           </div>

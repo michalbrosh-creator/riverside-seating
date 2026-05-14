@@ -167,6 +167,28 @@ function SeatingApp() {
   const toggleAdmin = (id) =>
     setEmployees((prev) => prev.map((e) => (e.id === id ? { ...e, isAdmin: !e.isAdmin } : e)));
 
+  const syncFromHibob = async () => {
+    const res = await fetch("/api/hibob-sync").catch(() => null);
+    if (!res || !res.ok) return { error: "Request failed" };
+    const { employees: hibobEmps, error } = await res.json();
+    if (error || !hibobEmps) return { error: error || "No data" };
+    setEmployees((prev) => {
+      const byEmail = new Map(prev.map((e) => [e.email?.toLowerCase(), e]));
+      const updated = prev.map((e) => {
+        const match = hibobEmps.find((h) => h.email === e.email?.toLowerCase());
+        return match ? { ...e, name: match.name, department: match.department } : e;
+      });
+      const base = Date.now();
+      hibobEmps.forEach((h, i) => {
+        if (!byEmail.has(h.email)) {
+          updated.push({ id: base + i, name: h.name, department: h.department, email: h.email, isAdmin: false });
+        }
+      });
+      return updated;
+    });
+    return { error: null };
+  };
+
   const importEmployees = (list) => {
     const base = Date.now();
     const newEmps = list.map((item, i) => ({
@@ -341,6 +363,7 @@ function SeatingApp() {
             onRemoveEmployee={removeEmployee}
             onToggleAdmin={toggleAdmin}
             onImportEmployees={importEmployees}
+            onSyncHibob={syncFromHibob}
           />
         )}
       </div>
