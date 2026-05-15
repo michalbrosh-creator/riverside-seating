@@ -30,7 +30,7 @@ export default async function handler(req, res) {
 
   const data = JSON.parse(text);
   const employees = (data.employees || [])
-    .filter((e) => e.email)
+    .filter((e) => e.email && (e.work?.site || "").startsWith("Israel"))
     .map((e) => ({
       name: e.displayName || [e.firstName, e.surname].filter(Boolean).join(" "),
       email: e.email.toLowerCase(),
