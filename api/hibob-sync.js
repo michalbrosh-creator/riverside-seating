@@ -4,12 +4,12 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "GET") return res.status(405).end();
 
-  const userId = process.env.HIBOB_SERVICE_USER_ID;
-  const token = process.env.HIBOB_SERVICE_USER_TOKEN;
+  const userId = (process.env.HIBOB_SERVICE_USER_ID || "").trim();
+  const token = (process.env.HIBOB_SERVICE_USER_TOKEN || "").trim();
   if (!userId || !token) return res.status(500).json({ error: "HiBob credentials not configured" });
 
   const auth = Buffer.from(`${userId}:${token}`).toString("base64");
-  console.log("HiBob userId:", userId, "token length:", token.length, "auth header:", `Basic ${auth}`.slice(0, 20) + "...");
+  console.log("HiBob userId:", JSON.stringify(userId), "token length:", token.length, "first4:", token.slice(0, 4), "last4:", token.slice(-4));
 
   const hibobRes = await fetch("https://api.hibob.com/v1/people", {
     headers: {
