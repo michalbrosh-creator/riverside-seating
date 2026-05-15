@@ -9,17 +9,20 @@ export default async function handler(req, res) {
   if (!userId || !token) return res.status(500).json({ error: "HiBob credentials not configured" });
 
   const auth = Buffer.from(`${userId}:${token}`).toString("base64");
-  console.log("HiBob userId:", JSON.stringify(userId), "token length:", token.length, "first4:", token.slice(0, 4), "last4:", token.slice(-4));
 
-  const hibobRes = await fetch("https://api.hibob.com/v1/people", {
+  const hibobRes = await fetch("https://api.hibob.com/v1/people/search", {
+    method: "POST",
     headers: {
       Authorization: `Basic ${auth}`,
       Accept: "application/json",
+      "Content-Type": "application/json",
     },
+    body: JSON.stringify({}),
   }).catch(() => null);
 
+  if (!hibobRes) return res.status(500).json({ error: "HiBob request failed" });
+
   const text = await hibobRes.text().catch(() => "");
-  console.log("HiBob status:", hibobRes.status, "body start:", text.slice(0, 200));
 
   if (!hibobRes.ok || text.trim().startsWith("<")) {
     return res.status(500).json({ error: `HiBob error ${hibobRes.status}: ${text.slice(0, 100)}` });
@@ -29,7 +32,7 @@ export default async function handler(req, res) {
   const employees = (data.employees || [])
     .filter((e) => e.email)
     .map((e) => ({
-      name: [e.firstName, e.lastName].filter(Boolean).join(" "),
+      name: e.displayName || [e.firstName, e.surname].filter(Boolean).join(" "),
       email: e.email.toLowerCase(),
       department: e.work?.department || "",
     }));
