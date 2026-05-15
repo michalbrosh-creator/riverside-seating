@@ -670,6 +670,19 @@ body {
 .emp-search::placeholder { color: #94a3b8; }
 .emp-count { font-size: 0.8125rem; color: #94a3b8; white-space: nowrap; flex-shrink: 0; }
 
+.seat-filter-btns { display: flex; gap: 4px; flex-shrink: 0; }
+.seat-filter-btn {
+  padding: 4px 10px; border-radius: 6px; border: 1px solid #e2e8f0;
+  background: transparent; font-size: 0.75rem; color: #64748b;
+  cursor: pointer; transition: all 0.15s;
+}
+.seat-filter-btn:hover { border-color: #6366f1; color: #6366f1; }
+.seat-filter-btn.active { background: #6366f1; border-color: #6366f1; color: white; font-weight: 600; }
+
+.emp-seat-cell { font-size: 0.8125rem; }
+.seat-assigned { color: #16a34a; font-weight: 500; }
+.seat-empty { color: #cbd5e1; }
+
 .emp-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
 .emp-table thead th {
   text-align: left; padding: 8px 16px;

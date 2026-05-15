@@ -34,13 +34,19 @@ function parseCSV(text) {
     .filter((e) => e.name);
 }
 
-function EmployeeTable({ employees, onRemove, onToggleAdmin }) {
+function EmployeeTable({ employees, onRemove, onToggleAdmin, seatingMap }) {
   const [search, setSearch] = useState("");
-  const filtered = employees.filter(
-    (e) =>
-      e.name.toLowerCase().includes(search.toLowerCase()) ||
-      false
-  );
+  const [seatFilter, setSeatFilter] = useState("all");
+
+  const filtered = employees.filter((e) => {
+    if (search && !e.name.toLowerCase().includes(search.toLowerCase())) return false;
+    if (seatFilter === "seated") return !!seatingMap[e.id];
+    if (seatFilter === "unseated") return !seatingMap[e.id];
+    return true;
+  });
+
+  const seatedCount = employees.filter((e) => !!seatingMap[e.id]).length;
+
   return (
     <div className="emp-table-wrapper">
       <div className="emp-table-toolbar">
@@ -48,32 +54,44 @@ function EmployeeTable({ employees, onRemove, onToggleAdmin }) {
           <span className="search-icon">⌕</span>
           <input className="emp-search" type="text" placeholder="Search employees…" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <span className="emp-count">{employees.length} employee{employees.length !== 1 ? "s" : ""}</span>
+        <div className="seat-filter-btns">
+          <button className={`seat-filter-btn ${seatFilter === "all" ? "active" : ""}`} onClick={() => setSeatFilter("all")}>All ({employees.length})</button>
+          <button className={`seat-filter-btn ${seatFilter === "seated" ? "active" : ""}`} onClick={() => setSeatFilter("seated")}>Seated ({seatedCount})</button>
+          <button className={`seat-filter-btn ${seatFilter === "unseated" ? "active" : ""}`} onClick={() => setSeatFilter("unseated")}>Unseated ({employees.length - seatedCount})</button>
+        </div>
       </div>
       {filtered.length === 0 ? (
         <div className="empty-hint padded">{employees.length === 0 ? "No employees yet. Add one above or import a CSV." : "No results."}</div>
       ) : (
         <table className="emp-table">
           <thead>
-            <tr><th></th><th>Name</th><th>Admin</th><th></th></tr>
+            <tr><th></th><th>Name</th><th>Seat</th><th>Admin</th><th></th></tr>
           </thead>
           <tbody>
-            {filtered.map((emp) => (
-              <tr key={emp.id} className={emp.isAdmin ? "admin-row" : ""}>
-                <td><div className="emp-avatar sm">{emp.name[0]}</div></td>
-                <td className="emp-name-cell">
-                  {emp.name}
-                  {emp.isAdmin && <span className="admin-badge">Admin</span>}
-                </td>
-                <td>
-                  <label className="toggle" title={emp.isAdmin ? "Revoke admin" : "Grant admin"}>
-                    <input type="checkbox" checked={!!emp.isAdmin} onChange={() => onToggleAdmin(emp.id)} />
-                    <span className="toggle-slider" />
-                  </label>
-                </td>
-                <td><button className="btn-icon-danger" onClick={() => onRemove(emp.id)}>Delete</button></td>
-              </tr>
-            ))}
+            {filtered.map((emp) => {
+              const seat = seatingMap[emp.id];
+              return (
+                <tr key={emp.id} className={emp.isAdmin ? "admin-row" : ""}>
+                  <td><div className="emp-avatar sm">{emp.name[0]}</div></td>
+                  <td className="emp-name-cell">
+                    {emp.name}
+                    {emp.isAdmin && <span className="admin-badge">Admin</span>}
+                  </td>
+                  <td className="emp-seat-cell">
+                    {seat
+                      ? <span className="seat-assigned">{seat.floorName} · {seat.deskName}</span>
+                      : <span className="seat-empty">—</span>}
+                  </td>
+                  <td>
+                    <label className="toggle" title={emp.isAdmin ? "Revoke admin" : "Grant admin"}>
+                      <input type="checkbox" checked={!!emp.isAdmin} onChange={() => onToggleAdmin(emp.id)} />
+                      <span className="toggle-slider" />
+                    </label>
+                  </td>
+                  <td><button className="btn-icon-danger" onClick={() => onRemove(emp.id)}>Delete</button></td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}
@@ -114,6 +132,17 @@ export default function AdminTab({
 
   const activeFloor = floors.find((f) => f.id === activeFloorId);
   const allDesks = activeFloor?.desks || [];
+
+  const seatingMap = {};
+  floors.forEach((floor) => {
+    (floor.desks || []).forEach((desk) => {
+      desk.seats.forEach((seat) => {
+        if (seat.employeeId) {
+          seatingMap[seat.employeeId] = { floorName: floor.name, deskName: desk.name || desk.label };
+        }
+      });
+    });
+  });
 
   const handleAddEmployee = () => {
     if (!empName.trim()) return;
@@ -259,7 +288,7 @@ export default function AdminTab({
 
         {importError && <div className="import-msg error">{importError}</div>}
         {importSuccess && <div className="import-msg success">{importSuccess}</div>}
-        <EmployeeTable employees={employees} onRemove={onRemoveEmployee} onToggleAdmin={onToggleAdmin} />
+        <EmployeeTable employees={employees} onRemove={onRemoveEmployee} onToggleAdmin={onToggleAdmin} seatingMap={seatingMap} />
       </section>
 
     </div>
