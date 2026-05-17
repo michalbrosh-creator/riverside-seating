@@ -214,6 +214,23 @@ function SeatingApp() {
         )
       )
     );
+
+    const emp = employees.find((e) => e.id === employeeId);
+    const floor = floors.find((f) => f.id === floorId);
+    const desk = floor?.desks.find((d) => d.seats.some((s) => s.id === seatId));
+    if (emp && desk) {
+      fetch("/api/seat-notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          employeeName: emp.name,
+          deskName: desk.name || desk.label,
+          floorName: floor?.name || "",
+          assignedByEmail: userEmail,
+          assignedByName: userName,
+        }),
+      }).catch(() => {});
+    }
   };
 
   const unassignSeat = (seatId) => {
