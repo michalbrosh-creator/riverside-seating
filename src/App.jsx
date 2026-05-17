@@ -215,9 +215,10 @@ function SeatingApp() {
       )
     );
 
-    const emp = employees.find((e) => e.id === employeeId);
-    const floor = floors.find((f) => f.id === floorId);
+    const emp = employees.find((e) => e.id === employeeId || String(e.id) === String(employeeId));
+    const floor = floors.find((f) => f.id === floorId || String(f.id) === String(floorId));
     const desk = floor?.desks.find((d) => d.seats.some((s) => s.id === seatId));
+    console.log("seat-notify debug:", { employeeId, seatId, floorId, emp: emp?.name, desk: desk?.label });
     if (emp && desk) {
       fetch("/api/seat-notify", {
         method: "POST",
