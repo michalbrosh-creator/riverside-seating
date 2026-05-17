@@ -37,18 +37,34 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).end();
 
-  const rawBody = await getRawBody(req);
-  const { employeeName, deskName, floorName, assignedByEmail, assignedByName } = JSON.parse(rawBody);
+  let parsed;
+  try {
+    if (req.body && typeof req.body === "object") {
+      parsed = req.body;
+    } else {
+      const rawBody = await getRawBody(req);
+      parsed = JSON.parse(rawBody);
+    }
+  } catch (e) {
+    console.error("seat-notify: body parse error", e);
+    return res.status(400).json({ error: "Bad request body" });
+  }
+
+  const { employeeName, deskName, floorName, assignedByEmail, assignedByName } = parsed;
+  console.log("seat-notify: received", { employeeName, deskName, floorName, assignedByEmail });
 
   if (assignedByEmail) {
     const assignerSlackId = await lookupSlackUserId(assignedByEmail);
+    console.log("seat-notify: assigner slack id", assignerSlackId);
     if (assignerSlackId === BAR_SLACK_ID) {
+      console.log("seat-notify: skipping, Bar is the assigner");
       return res.status(200).json({ skipped: true });
     }
   }
 
   const who = assignedByName || assignedByEmail || "Someone";
   const message = `${who} seated *${employeeName}* at ${deskName} · ${floorName} 🪑`;
+  console.log("seat-notify: sending DM to Bar:", message);
   await sendDM(BAR_SLACK_ID, message);
 
   return res.status(200).json({ ok: true });
